@@ -1,0 +1,2155 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#f4f6f5" />
+    <title>LiftApp - Gestion Avicole</title>
+
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js">
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js">
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js">
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js">
+    </script>
+
+    <!-- EmailJS pour les notifications -->
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js">
+    </script>
+
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        body { background: #f3f5f4; padding-bottom: 80px; color: #1a2a1a; transition: background 0.3s, color 0.3s; }
+
+        .app-header {
+            background: #ffffff;
+            padding: 16px 20px;
+            border-bottom: 1px solid #e8ece8;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            transition: background 0.3s, border-color 0.3s;
+        }
+        .app-header h1 { font-size: 1.2rem; font-weight: 700; color: #0f3b2a; transition: color 0.3s; }
+        .header-right { display: flex; align-items: center; gap: 12px; }
+        .save-indicator {
+            font-size: 1.1rem;
+            color: #6b7e75;
+            transition: color 0.3s, transform 0.3s;
+            cursor: default;
+        }
+        .save-indicator.saving { color: #2d8f5a; transform: rotate(360deg); transition: transform 0.6s; }
+        .save-indicator.error { color: #c62828; }
+        .logout-btn-header {
+            background: none;
+            border: 1px solid #e8ece8;
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #6b7e75;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .logout-btn-header:hover { color: #c62828; border-color: #c62828; }
+
+        .page { display: none; padding: 16px 20px; animation: fadeIn 0.3s ease; }
+        .page.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        .card {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+            border: 1px solid #f0f2f0;
+            transition: background 0.3s, border-color 0.3s, box-shadow 0.3s;
+        }
+        .card-icon {
+            width: 40px; height: 40px;
+            background: #e8f5e9; color: #1e4d36;
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.2rem; margin-bottom: 10px;
+            transition: background 0.3s, color 0.3s;
+        }
+        .card-icon.red { background: #fce4ec; color: #c62828; }
+        .card-icon.egg { background: #fff3e0; color: #e65100; }
+        .card-label { color: #6b7e75; font-size: 0.8rem; font-weight: 500; transition: color 0.3s; }
+        .card-value { font-size: 1.6rem; font-weight: 700; color: #0f3b2a; margin-top: 4px; transition: color 0.3s; }
+
+        .card-large {
+            background: #ffffff; border-radius: 16px; padding: 20px;
+            margin-top: 14px; border: 1px solid #f0f2f0;
+            transition: background 0.3s, border-color 0.3s;
+        }
+        .card-large .label { color: #6b7e75; font-size: 0.85rem; font-weight: 500; transition: color 0.3s; }
+        .card-large .value { font-size: 2.2rem; font-weight: 700; color: #1e4d36; margin-top: 4px; transition: color 0.3s; }
+
+        .section-title { font-size: 0.9rem; font-weight: 600; color: #0f3b2a; margin: 24px 0 12px; transition: color 0.3s; }
+        .cat-item {
+            background: #ffffff; border-radius: 12px; padding: 16px 18px;
+            margin-bottom: 10px; border: 1px solid #f0f2f0;
+            display: flex; justify-content: space-between; align-items: center; cursor: pointer;
+            transition: background 0.3s, border-color 0.3s;
+        }
+        .cat-item .left .name { font-weight: 600; font-size: 0.95rem; color: #0f3b2a; transition: color 0.3s; }
+        .cat-item .left .desc { font-size: 0.75rem; color: #8a9a8a; transition: color 0.3s; }
+        .cat-item .count {
+            background: #e8f5e9; padding: 4px 12px; border-radius: 20px;
+            font-weight: 700; color: #1e4d36; font-size: 0.9rem;
+            transition: background 0.3s, color 0.3s;
+        }
+        .cat-item .count.egg-count { background: #fff3e0; color: #e65100; }
+
+        .table-card {
+            background: #ffffff; border-radius: 16px; padding: 4px 16px;
+            border: 1px solid #f0f2f0; margin-top: 12px;
+            transition: background 0.3s, border-color 0.3s;
+        }
+        .table-row {
+            display: flex; justify-content: space-between; padding: 14px 0;
+            border-bottom: 1px solid #f0f2f0; font-size: 0.9rem;
+            transition: border-color 0.3s;
+        }
+        .table-row:last-child { border-bottom: none; }
+        .table-row .info .title { font-weight: 500; transition: color 0.3s; }
+        .table-row .info .sub { color: #8a9a8a; font-size: 0.75rem; transition: color 0.3s; }
+        .table-row .amount { font-weight: 600; }
+        .table-row .amount.positive { color: #1e4d36; }
+        .table-row .amount.negative { color: #c62828; }
+        .table-row .amount.neutral { color: #6b7e75; }
+
+        .fab {
+            position: fixed; bottom: 100px; right: 20px;
+            width: 56px; height: 56px; border-radius: 50%;
+            background: #0f3b2a; color: #fff; border: none;
+            font-size: 1.8rem; font-weight: 300; cursor: pointer;
+            box-shadow: 0 4px 16px rgba(15, 59, 42, 0.3);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 20; transition: transform 0.2s, background 0.3s;
+        }
+        .fab:active { transform: scale(0.95); }
+        .fab.ai-fab {
+            bottom: 170px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+            font-size: 1.4rem;
+        }
+
+        .bottom-nav {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            background: #ffffff; height: 70px;
+            display: flex; justify-content: space-around; align-items: center;
+            border-top: 1px solid #e8ece8; z-index: 10;
+            padding-bottom: env(safe-area-inset-bottom);
+            transition: background 0.3s, border-color 0.3s;
+        }
+        .nav-item {
+            display: flex; flex-direction: column; align-items: center;
+            color: #8a9a8a; text-decoration: none; font-size: 0.65rem;
+            font-weight: 500; cursor: pointer; border: none; background: none;
+            gap: 4px; transition: color 0.2s;
+        }
+        .nav-item i { font-size: 1.4rem; }
+        .nav-item.active { color: #0f3b2a; }
+
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5); z-index: 100; align-items: flex-end; justify-content: center;
+            transition: background 0.3s;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal-content {
+            background: #ffffff; width: 100%; max-width: 500px;
+            border-radius: 24px 24px 0 0; padding: 24px 20px 40px;
+            max-height: 90vh; overflow-y: auto; animation: slideUp 0.3s ease;
+            transition: background 0.3s;
+        }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .modal-header h2 { font-size: 1.2rem; color: #0f3b2a; transition: color 0.3s; }
+        .modal-header .close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #8a9a8a; }
+
+        .quick-options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+        .q-opt {
+            background: #f8faf8; border: 1px solid #e8ece8; border-radius: 12px;
+            padding: 16px 8px; text-align: center; cursor: pointer; transition: 0.2s, background 0.3s, border-color 0.3s;
+        }
+        .q-opt:active { background: #e8f5e9; border-color: #0f3b2a; }
+        .q-opt i { font-size: 1.5rem; color: #0f3b2a; display: block; margin-bottom: 6px; transition: color 0.3s; }
+        .q-opt span { font-size: 0.75rem; font-weight: 500; color: #1a2a1a; transition: color 0.3s; }
+        .q-opt i.egg-icon { color: #e65100; }
+
+        .form-group { margin-bottom: 16px; display: none; }
+        .form-group.show { display: block; }
+        .form-group label { display: block; font-size: 0.8rem; font-weight: 600; color: #0f3b2a; margin-bottom: 6px; transition: color 0.3s; }
+        .form-group input, .form-group select {
+            width: 100%; padding: 12px 14px; border: 1px solid #e8ece8;
+            border-radius: 12px; font-size: 0.9rem; background: #f8faf8;
+            outline: none; transition: 0.2s, background 0.3s, border-color 0.3s, color 0.3s;
+        }
+        .form-group input:focus { border-color: #0f3b2a; background: #fff; }
+        .form-group .total-auto {
+            font-size: 0.85rem;
+            color: #1e4d36;
+            font-weight: 600;
+            margin-top: 4px;
+        }
+        .btn-submit {
+            width: 100%; padding: 14px; border: none; border-radius: 12px;
+            background: #0f3b2a; color: #fff; font-weight: 600; font-size: 1rem;
+            cursor: pointer; margin-top: 10px; display: none;
+            transition: background 0.3s;
+        }
+        .btn-submit.show { display: block; }
+
+        .back-btn {
+            background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #0f3b2a;
+            margin-right: 12px; display: none; align-items: center;
+            transition: color 0.3s;
+        }
+        .back-btn.show { display: inline-flex; }
+        .header-title { display: flex; align-items: center; }
+
+        .filter-nav {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+        }
+        .filter-nav button {
+            padding: 6px 14px;
+            border: 1px solid #e8ece8;
+            border-radius: 20px;
+            background: #ffffff;
+            font-weight: 500;
+            font-size: 0.75rem;
+            color: #6b7e75;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .filter-nav button.active {
+            background: #0f3b2a;
+            color: #fff;
+            border-color: #0f3b2a;
+        }
+        .filter-nav button:active { transform: scale(0.95); }
+
+        .settings-nav {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .settings-nav button {
+            flex: 1;
+            min-width: 80px;
+            padding: 10px 14px;
+            border: 1px solid #e8ece8;
+            border-radius: 12px;
+            background: #ffffff;
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: #0f3b2a;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .settings-nav button.active {
+            background: #0f3b2a;
+            color: #fff;
+            border-color: #0f3b2a;
+        }
+        .settings-nav button .ai-badge {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            background: #667eea;
+            color: #fff;
+            font-size: 0.55rem;
+            font-weight: 700;
+            padding: 1px 4px;
+            border-radius: 4px;
+        }
+        .settings-nav button:active { transform: scale(0.97); }
+
+        .settings-section {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+        .settings-section.active { display: block; }
+
+        .settings-section .settings-card {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid #f0f2f0;
+            transition: background 0.3s, border-color 0.3s;
+        }
+        .settings-section .settings-card h3 {
+            font-size: 1rem;
+            color: #0f3b2a;
+            margin-bottom: 14px;
+            transition: color 0.3s;
+        }
+        .settings-section .settings-card label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: #0f3b2a;
+            margin-bottom: 6px;
+            transition: color 0.3s;
+        }
+        .settings-section .settings-card select {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid #e8ece8;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            background: #f8faf8;
+            outline: none;
+            transition: 0.2s, background 0.3s, border-color 0.3s, color 0.3s;
+        }
+        .settings-section .settings-card select:focus {
+            border-color: #0f3b2a;
+            background: #fff;
+        }
+        .settings-section .settings-card .about-text {
+            color: #1a2a1a;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            transition: color 0.3s;
+        }
+        .settings-section .settings-card .about-text strong {
+            color: #0f3b2a;
+            transition: color 0.3s;
+        }
+        .settings-section .settings-card .about-text .version-info {
+            color: #6b7e75;
+            font-size: 0.8rem;
+            margin-bottom: 12px;
+            transition: color 0.3s;
+        }
+
+        .export-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        .export-buttons button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .export-buttons button:active { transform: scale(0.95); }
+        .export-csv { background: #e8f5e9; color: #1e4d36; }
+        .export-pdf { background: #fce4ec; color: #c62828; }
+        .export-csv:hover { background: #c8e6c9; }
+        .export-pdf:hover { background: #f8bbd0; }
+
+        .btn-reset {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid #0f3b2a;
+            border-radius: 12px;
+            background: #0f3b2a;
+            color: #fff;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+        .btn-reset:hover { background: #1e4d36; }
+        .btn-reset:active { transform: scale(0.97); }
+
+        .reset-desc {
+            font-size: 0.85rem;
+            color: #6b7e75;
+            margin-bottom: 14px;
+            line-height: 1.6;
+        }
+
+        .modal-reset-content {
+            max-width: 400px !important;
+            border-radius: 24px !important;
+        }
+        .modal-reset-content .modal-header h2 {
+            color: #0f3b2a;
+        }
+        .modal-reset-content .modal-header h2.danger {
+            color: #c62828;
+        }
+        .reset-modal-text {
+            text-align: center;
+            padding: 10px 0;
+        }
+        .reset-modal-text .big-text {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #0f3b2a;
+        }
+        .reset-modal-text .big-text.danger {
+            color: #c62828;
+        }
+        .reset-modal-text .small-text {
+            font-size: 0.9rem;
+            color: #6b7e75;
+            margin-top: 10px;
+        }
+        .reset-modal-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+        }
+        .reset-modal-buttons .btn-refuse {
+            flex: 1;
+            padding: 14px;
+            border: 2px solid #e8ece8;
+            border-radius: 12px;
+            background: #fff;
+            color: #0f3b2a;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+        .reset-modal-buttons .btn-refuse:active { transform: scale(0.95); }
+        .reset-modal-buttons .btn-accept {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 12px;
+            background: #0f3b2a;
+            color: #fff;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+        .reset-modal-buttons .btn-accept:active { transform: scale(0.95); }
+        .reset-modal-buttons .btn-confirm {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 12px;
+            background: #c62828;
+            color: #fff;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+        .reset-modal-buttons .btn-confirm:active { transform: scale(0.95); }
+
+        .month-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 16px 0;
+        }
+        .month-nav button {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            color: #0f3b2a;
+            padding: 8px 12px;
+            border-radius: 8px;
+            transition: background 0.2s;
+        }
+        .month-nav button:active { background: #e8ece8; }
+        .month-nav .month-label { font-weight: 600; font-size: 1rem; color: #0f3b2a; }
+        .report-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin: 12px 0; }
+        .report-item {
+            background: #f8faf8;
+            border-radius: 12px;
+            padding: 12px;
+            text-align: center;
+            transition: background 0.3s;
+        }
+        .report-item .label { font-size: 0.7rem; color: #6b7e75; }
+        .report-item .value { font-size: 1.1rem; font-weight: 700; color: #0f3b2a; }
+        .report-item .value.positive { color: #1e4d36; }
+        .report-item .value.negative { color: #c62828; }
+        .report-detail { margin: 12px 0; }
+        .report-detail .row {
+            display: flex; justify-content: space-between;
+            padding: 6px 0; border-bottom: 1px solid #e8ece8;
+            font-size: 0.85rem;
+        }
+        .report-detail .row:last-child { border-bottom: none; }
+        .report-detail .row .val { font-weight: 600; }
+        .report-chart {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-around;
+            height: 60px;
+            margin: 12px 0;
+            gap: 4px;
+        }
+        .report-chart .bar {
+            flex: 1;
+            border-radius: 4px 4px 0 0;
+            min-height: 4px;
+            transition: height 0.3s;
+        }
+        .report-chart .bar.rev { background: #1e4d36; }
+        .report-chart .bar.dep { background: #c62828; }
+        .report-summary { margin-top: 12px; font-size: 0.85rem; color: #6b7e75; }
+
+        /* ==================== OVERLAY ASSISTANT IA PLEIN ECRAN ==================== */
+        .ai-fullscreen-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 200;
+            display: none;
+            flex-direction: column;
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+        }
+        .ai-fullscreen-overlay.show { display: flex; }
+        .ai-fullscreen-container {
+            width: 100%;
+            height: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            background: #ffffff;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            transition: background 0.3s;
+        }
+        .ai-fullscreen-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #ffffff;
+            flex-shrink: 0;
+        }
+        .ai-fullscreen-header .ai-logo-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+        .ai-fullscreen-header .ai-back-btn {
+            background: none;
+            border: none;
+            color: #ffffff;
+            font-size: 1.3rem;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 8px;
+            transition: background 0.2s;
+        }
+        .ai-fullscreen-header .ai-back-btn:hover { background: rgba(255,255,255,0.15); }
+        .ai-fullscreen-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            background: #f8f9fa;
+            transition: background 0.3s;
+        }
+        .ai-message { margin-bottom: 12px; display: flex; flex-direction: column; }
+        .ai-message.user { align-items: flex-end; }
+        .ai-message.bot { align-items: flex-start; }
+        .ai-message-content {
+            max-width: 85%;
+            padding: 10px 14px;
+            border-radius: 14px;
+            font-size: 0.85rem;
+            line-height: 1.5;
+            word-wrap: break-word;
+        }
+        .ai-message.user .ai-message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            border-bottom-right-radius: 4px;
+        }
+        .ai-message.bot .ai-message-content {
+            background: #ffffff;
+            color: #1a2a1a;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+        }
+        .ai-message-time { font-size: 0.65rem; color: #8a9a8a; margin-top: 4px; padding: 0 4px; }
+        .ai-fullscreen-input-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 16px;
+            background: #ffffff;
+            border-top: 1px solid #e8ece8;
+            flex-shrink: 0;
+            transition: all 0.3s;
+        }
+        .ai-fullscreen-input-bar input {
+            flex: 1;
+            padding: 10px 14px;
+            border: 1px solid #e8ece8;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            outline: none;
+            background: #f8f9fa;
+            transition: all 0.3s;
+        }
+        .ai-fullscreen-input-bar input:focus { border-color: #667eea; background: #fff; }
+        .ai-fullscreen-input-bar button.send-btn {
+            width: 40px; height: 40px; border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff; border: none; cursor: pointer; font-size: 0.9rem;
+            transition: transform 0.2s; flex-shrink: 0;
+        }
+        .ai-fullscreen-input-bar button.send-btn:active { transform: scale(0.9); }
+        .ai-history-btn {
+            background: none !important; color: #667eea !important;
+            font-size: 1.2rem !important; width: 40px !important; height: 40px !important;
+            border-radius: 50% !important; border: 1px solid #e8ece8 !important;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0; transition: all 0.2s;
+        }
+        .ai-history-btn:hover { background: #f0f0f0 !important; }
+        .ai-history-panel {
+            position: fixed; top: 0; left: 0; width: 320px; max-width: 85vw; height: 100%;
+            background: #ffffff; z-index: 250; transform: translateX(-100%);
+            transition: transform 0.3s ease; display: flex; flex-direction: column;
+            box-shadow: 4px 0 20px rgba(0,0,0,0.15);
+        }
+        .ai-history-panel.show { transform: translateX(0); }
+        .ai-history-panel-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 16px 20px; border-bottom: 1px solid #e8ece8;
+            font-weight: 600; font-size: 0.9rem; color: #0f3b2a;
+        }
+        .ai-history-panel-header button { background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #8a9a8a; }
+        .ai-history-list { flex: 1; overflow-y: auto; padding: 10px; }
+        .ai-history-item {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 14px; border-radius: 12px; cursor: pointer; transition: background 0.2s; margin-bottom: 4px;
+        }
+        .ai-history-item:hover { background: #f0f2f0; }
+        .ai-history-item .history-preview { flex: 1; min-width: 0; }
+        .ai-history-item .history-preview .history-title {
+            font-size: 0.8rem; font-weight: 500; color: #1a2a1a;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .ai-history-item .history-preview .history-date { font-size: 0.7rem; color: #8a9a8a; margin-top: 2px; }
+        .ai-history-item .history-delete {
+            background: none; border: none; color: #c62828; cursor: pointer;
+            font-size: 0.8rem; padding: 6px; border-radius: 6px; margin-left: 8px; flex-shrink: 0;
+        }
+        .ai-history-item .history-delete:hover { background: #fce4ec; }
+        .ai-history-backdrop {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.4); z-index: 240; display: none;
+        }
+        .ai-history-backdrop.show { display: block; }
+        .ai-typing {
+            display: flex; gap: 4px; padding: 10px 14px;
+            background: #ffffff; border-radius: 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+        }
+        .ai-typing-dot {
+            width: 7px; height: 7px; border-radius: 50%; background: #a0a0a0;
+            animation: aiBounce 1.4s infinite;
+        }
+        .ai-typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .ai-typing-dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes aiBounce {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-8px); }
+        }
+
+        body.dark {
+            background: #0d0d0d;
+            color: #f0f0f0;
+        }
+        body.dark .app-header {
+            background: #121212;
+            border-bottom-color: #2a2a2a;
+        }
+        body.dark .app-header h1 { color: #f0f0f0; }
+        body.dark .save-indicator { color: #b0b0b0; }
+        body.dark .save-indicator.saving { color: #2d8f5a; }
+        body.dark .save-indicator.error { color: #e57373; }
+
+        body.dark .card {
+            background: #1c1c1c;
+            border-color: #2a2a2a;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+        }
+        body.dark .card-icon {
+            background: #2a2a2a;
+            color: #2d8f5a;
+        }
+        body.dark .card-icon.red { background: #3d1a1a; color: #e57373; }
+        body.dark .card-icon.egg { background: #2a1a0a; color: #ff9800; }
+        body.dark .card-label { color: #b0b0b0; }
+        body.dark .card-value { color: #f0f0f0; }
+
+        body.dark .card-large {
+            background: #1c1c1c;
+            border-color: #2a2a2a;
+        }
+        body.dark .card-large .label { color: #b0b0b0; }
+        body.dark .card-large .value { color: #2d8f5a; }
+
+        body.dark .section-title { color: #f0f0f0; }
+        body.dark .cat-item {
+            background: #1c1c1c;
+            border-color: #2a2a2a;
+        }
+        body.dark .cat-item .left .name { color: #f0f0f0; }
+        body.dark .cat-item .left .desc { color: #b0b0b0; }
+        body.dark .cat-item .count {
+            background: #2a2a2a;
+            color: #2d8f5a;
+        }
+        body.dark .cat-item .count.egg-count { background: #2a1a0a; color: #ff9800; }
+
+        body.dark .table-card {
+            background: #1c1c1c;
+            border-color: #2a2a2a;
+        }
+        body.dark .table-row {
+            border-bottom-color: #2a2a2a;
+        }
+        body.dark .table-row .info .title { color: #f0f0f0; }
+        body.dark .table-row .info .sub { color: #b0b0b0; }
+        body.dark .table-row .amount.positive { color: #2d8f5a; }
+        body.dark .table-row .amount.negative { color: #e57373; }
+        body.dark .table-row .amount.neutral { color: #b0b0b0; }
+
+        body.dark .bottom-nav {
+            background: #121212;
+            border-top-color: #2a2a2a;
+        }
+        body.dark .nav-item { color: #6a6a6a; }
+        body.dark .nav-item.active { color: #2d8f5a; }
+
+        body.dark .modal-content {
+            background: #1c1c1c;
+        }
+        body.dark .modal-header h2 { color: #f0f0f0; }
+        body.dark .modal-header h2.danger { color: #e57373; }
+        body.dark .modal-header .close { color: #b0b0b0; }
+
+        body.dark .q-opt {
+            background: #2a2a2a;
+            border-color: #3a3a3a;
+        }
+        body.dark .q-opt:active { background: #3a3a3a; border-color: #2d8f5a; }
+        body.dark .q-opt i { color: #2d8f5a; }
+        body.dark .q-opt i.egg-icon { color: #ff9800; }
+        body.dark .q-opt span { color: #f0f0f0; }
+
+        body.dark .form-group label { color: #f0f0f0; }
+        body.dark .form-group input, body.dark .form-group select {
+            background: #2a2a2a;
+            border-color: #3a3a3a;
+            color: #f0f0f0;
+        }
+        body.dark .form-group input:focus {
+            border-color: #2d8f5a;
+            background: #333;
+        }
+        body.dark .form-group .total-auto { color: #2d8f5a; }
+        body.dark .btn-submit { background: #2d8f5a; }
+
+        body.dark .back-btn { color: #f0f0f0; }
+        body.dark .modal-overlay { background: rgba(0,0,0,0.8); }
+
+        body.dark .settings-nav button {
+            background: #1c1c1c;
+            border-color: #2a2a2a;
+            color: #b0b0b0;
+        }
+        body.dark .settings-nav button.active {
+            background: #2d8f5a;
+            color: #fff;
+            border-color: #2d8f5a;
+        }
+        body.dark .settings-section .settings-card {
+            background: #1c1c1c;
+            border-color: #2a2a2a;
+        }
+        body.dark .settings-section .settings-card h3 { color: #f0f0f0; }
+        body.dark .settings-section .settings-card label { color: #f0f0f0; }
+        body.dark .settings-section .settings-card select {
+            background: #2a2a2a;
+            border-color: #3a3a3a;
+            color: #f0f0f0;
+        }
+        body.dark .settings-section .settings-card select:focus {
+            border-color: #2d8f5a;
+            background: #333;
+        }
+        body.dark .settings-section .settings-card .about-text { color: #d0d0d0; }
+        body.dark .settings-section .settings-card .about-text strong { color: #2d8f5a; }
+        body.dark .settings-section .settings-card .about-text .version-info { color: #b0b0b0; }
+        body.dark .fab { background: #2d8f5a; box-shadow: 0 4px 16px rgba(45, 143, 90, 0.4); }
+
+        body.dark .filter-nav button {
+            background: #1c1c1c;
+            border-color: #2a2a2a;
+            color: #b0b0b0;
+        }
+        body.dark .filter-nav button.active {
+            background: #2d8f5a;
+            color: #fff;
+            border-color: #2d8f5a;
+        }
+        body.dark .report-item { background: #2a2a2a; }
+        body.dark .report-item .value { color: #f0f0f0; }
+        body.dark .report-item .value.positive { color: #2d8f5a; }
+        body.dark .report-item .value.negative { color: #e57373; }
+        body.dark .report-detail .row { border-bottom-color: #2a2a2a; }
+        body.dark .month-nav .month-label { color: #f0f0f0; }
+        body.dark .month-nav button { color: #b0b0b0; }
+        body.dark .export-csv { background: #1a3a1a; color: #4caf50; }
+        body.dark .export-pdf { background: #3a1a1a; color: #ef5350; }
+        body.dark .export-csv:hover { background: #2a4a2a; }
+        body.dark .export-pdf:hover { background: #4a2a2a; }
+        body.dark .btn-reset {
+            background: #2d8f5a;
+            border-color: #2d8f5a;
+        }
+        body.dark .btn-reset:hover { background: #3d9f6a; }
+        body.dark .reset-desc { color: #b0b0b0; }
+        body.dark .reset-modal-text .big-text { color: #f0f0f0; }
+        body.dark .reset-modal-text .big-text.danger { color: #e57373; }
+        body.dark .reset-modal-text .small-text { color: #b0b0b0; }
+        body.dark .reset-modal-buttons .btn-refuse {
+            background: #2a2a2a;
+            border-color: #3a3a3a;
+            color: #f0f0f0;
+        }
+        body.dark .reset-modal-buttons .btn-accept { background: #2d8f5a; }
+        body.dark .reset-modal-buttons .btn-confirm { background: #c62828; }
+
+        body.dark .ai-fullscreen-container { background: #121212; }
+        body.dark .ai-fullscreen-messages { background: #0d0d0d; }
+        body.dark .ai-message.bot .ai-message-content { background: #1c1c1c; color: #f0f0f0; }
+        body.dark .ai-fullscreen-input-bar { background: #121212; border-top-color: #2a2a2a; }
+        body.dark .ai-fullscreen-input-bar input { background: #1c1c1c; border-color: #2a2a2a; color: #f0f0f0; }
+        body.dark .ai-fullscreen-input-bar input:focus { border-color: #667eea; background: #2a2a2a; }
+        body.dark .ai-history-btn { border-color: #2a2a2a !important; color: #667eea !important; }
+        body.dark .ai-history-btn:hover { background: #2a2a2a !important; }
+        body.dark .ai-history-panel { background: #121212; }
+        body.dark .ai-history-panel-header { border-bottom-color: #2a2a2a; color: #f0f0f0; }
+        body.dark .ai-history-item:hover { background: #1c1c1c; }
+        body.dark .ai-history-item .history-preview .history-title { color: #f0f0f0; }
+        body.dark .ai-typing { background: #1c1c1c; }
+        body.dark .logout-btn-header { border-color: #2a2a2a; color: #b0b0b0; }
+        body.dark .logout-btn-header:hover { color: #ef5350; border-color: #ef5350; }
+
+        /* ==================== AUTHENTIFICATION ==================== */
+        .auth-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(160deg, #0a2e1f 0%, #0f3b2a 40%, #1a5c3a 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.5s, visibility 0.5s;
+        }
+        .auth-overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+        .auth-card {
+            background: #ffffff; border-radius: 28px; padding: 36px 28px;
+            width: 90%; max-width: 420px; text-align: center;
+            box-shadow: 0 24px 64px rgba(0,0,0,0.35); animation: authPop 0.5s ease; transition: background 0.3s;
+        }
+        @keyframes authPop { from { transform: scale(0.92) translateY(20px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
+        .auth-logo { font-size: 3.2rem; margin-bottom: 6px; }
+        .auth-title { font-size: 1.3rem; font-weight: 700; color: #0f3b2a; margin-bottom: 2px; transition: color 0.3s; }
+        .auth-subtitle { font-size: 0.8rem; color: #2d8f5a; font-weight: 500; margin-bottom: 22px; font-style: italic; transition: color 0.3s; }
+        .auth-card .form-group { text-align: left; margin-bottom: 14px; display: block !important; }
+        .auth-card label { display: block; font-size: 0.8rem; font-weight: 600; color: #0f3b2a; margin-bottom: 5px; transition: color 0.3s; }
+        .auth-card input { width: 100%; padding: 13px 14px; border: 1.5px solid #e0e5e0; border-radius: 14px; font-size: 0.9rem; background: #f9fbf9; outline: none; transition: 0.2s, background 0.3s, border-color 0.3s, color 0.3s; box-sizing: border-box; }
+        .auth-card input:focus { border-color: #0f3b2a; background: #fff; box-shadow: 0 0 0 3px rgba(15,59,42,0.08); }
+        .auth-btn { width: 100%; padding: 14px; border: none; border-radius: 14px; background: #0f3b2a; color: #fff; font-weight: 600; font-size: 0.95rem; cursor: pointer; margin-top: 6px; transition: background 0.3s, transform 0.15s; letter-spacing: 0.3px; }
+        .auth-btn:hover { background: #1a4d34; }
+        .auth-btn:active { transform: scale(0.97); }
+        .auth-error { background: #fce4ec; border: 1px solid #c62828; border-radius: 12px; padding: 12px 16px; margin-top: 10px; display: none; text-align: center; }
+        .auth-error.show { display: block; }
+        .auth-error .error-text { font-size: 0.85rem; color: #c62828; margin: 4px 0; line-height: 1.4; }
+        .auth-error .error-btn { background: #c62828; color: #fff; border: none; padding: 6px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.8rem; margin-top: 6px; transition: background 0.3s; }
+        .auth-error .error-btn:hover { background: #b71c1c; }
+        .auth-success { background: #e8f5e9; border: 1px solid #1e4d36; border-radius: 12px; padding: 12px 16px; margin-top: 10px; display: none; text-align: center; }
+        .auth-success.show { display: block; }
+        .auth-success .success-text { font-size: 0.85rem; color: #1e4d36; margin: 4px 0; line-height: 1.4; }
+        body.dark .auth-error { background: #3d1a1a; border-color: #ef5350; }
+        body.dark .auth-error .error-text { color: #ef5350; }
+        body.dark .auth-error .error-btn { background: #ef5350; color: #121212; }
+        body.dark .auth-error .error-btn:hover { background: #e57373; }
+        body.dark .auth-success { background: #1a3a1a; border-color: #4caf50; }
+        body.dark .auth-success .success-text { color: #4caf50; }
+        .auth-switch { font-size: 0.82rem; color: #6b7e75; margin-top: 18px; transition: color 0.3s; }
+        .auth-switch a { color: #0f3b2a; font-weight: 600; cursor: pointer; text-decoration: underline; transition: color 0.3s; }
+        .auth-switch a:hover { color: #2d8f5a; }
+        .auth-footer { font-size: 0.7rem; color: #a0b0a0; margin-top: 14px; transition: color 0.3s; }
+        .auth-loading { display: none; margin-top: 10px; color: #6b7e75; font-size: 0.85rem; }
+        .auth-loading.show { display: block; }
+        .auth-loading i { animation: spin 1s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .forgot-password-link { text-align: right; margin-top: 8px; }
+        .forgot-password-link a { font-size: 0.78rem; color: #2d8f5a; cursor: pointer; text-decoration: underline; transition: color 0.3s; }
+        .forgot-password-link a:hover { color: #1e4d36; }
+        body.dark .auth-overlay { background: linear-gradient(160deg, #050505 0%, #0a0a0a 40%, #1a3a2a 100%); }
+        body.dark .auth-card { background: #1c1c1c; }
+        body.dark .auth-title { color: #f0f0f0; }
+        body.dark .auth-subtitle { color: #4caf80; }
+        body.dark .auth-card label { color: #e0e0e0; }
+        body.dark .auth-card input { background: #2a2a2a; border-color: #3a3a3a; color: #f0f0f0; }
+        body.dark .auth-card input:focus { border-color: #2d8f5a; background: #333; box-shadow: 0 0 0 3px rgba(45,143,90,0.15); }
+        body.dark .auth-btn { background: #2d8f5a; }
+        body.dark .auth-btn:hover { background: #3d9f6a; }
+        body.dark .auth-switch { color: #9a9a9a; }
+        body.dark .auth-switch a { color: #4caf80; }
+        body.dark .auth-footer { color: #6a6a6a; }
+        body.dark .auth-loading { color: #b0b0b0; }
+        body.dark .forgot-password-link a { color: #4caf80; }
+        body.dark .forgot-password-link a:hover { color: #2d8f5a; }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 50% { transform: translateX(8px); } 75% { transform: translateX(-5px); } }
+        .shake { animation: shake 0.4s ease; }
+        .profile-photo-container { display: flex; flex-direction: column; align-items: center; margin-bottom: 16px; }
+        .profile-photo { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid #0f3b2a; cursor: pointer; background: #e8ece8; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; color: #6b7e75; transition: all 0.3s; overflow: hidden; }
+        .profile-photo:hover { opacity: 0.8; }
+        .profile-photo img { width: 100%; height: 100%; object-fit: cover; }
+        .profile-photo-label { font-size: 0.75rem; color: #6b7e75; margin-top: 6px; cursor: pointer; }
+        body.dark .profile-photo { border-color: #2d8f5a; background: #2a2a2a; }
+        body.dark .profile-photo-label { color: #b0b0b0; }
+        .danger-btn { width: 100%; padding: 14px; border: 2px solid #c62828; border-radius: 12px; background: #c62828; color: #fff; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.3s; margin-top: 10px; }
+        .danger-btn:hover { background: #b71c1c; }
+        .danger-btn:active { transform: scale(0.97); }
+        body.dark .danger-btn { background: #c62828; border-color: #c62828; }
+        body.dark .danger-btn:hover { background: #b71c1c; }
+        .settings-card .profile-email { font-size: 0.85rem; color: #6b7e75; margin-bottom: 12px; transition: color 0.3s; }
+        body.dark .settings-card .profile-email { color: #b0b0b0; }
+
+        /* ==================== A PROPOS (MODIFIE) ==================== */
+        .about-detail-text {
+            font-size: 0.85rem;
+            line-height: 1.8;
+            color: #1a2a1a;
+            transition: color 0.3s;
+        }
+        body.dark .about-detail-text { color: #d0d0d0; }
+        .about-detail-text strong { color: #0f3b2a; transition: color 0.3s; }
+        body.dark .about-detail-text strong { color: #2d8f5a; }
+        .about-detail-text .contact-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 6px 0;
+            padding: 6px 10px;
+            border-radius: 10px;
+            transition: background 0.3s;
+        }
+        .about-detail-text .contact-item:hover { background: #f0f2f0; }
+        body.dark .about-detail-text .contact-item:hover { background: #2a2a2a; }
+        .about-detail-text .contact-item i {
+            width: 24px;
+            font-size: 1.1rem;
+            text-align: center;
+            color: #0f3b2a;
+        }
+        body.dark .about-detail-text .contact-item i { color: #2d8f5a; }
+        .about-detail-text .contact-item .whatsapp { color: #25D366; }
+        .about-detail-text .contact-item .email { color: #EA4335; }
+        .about-detail-text .contact-item .facebook { color: #1877F2; }
+        .about-detail-text .contact-item a {
+            color: #1a2a1a;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        .about-detail-text .contact-item a:hover { color: #0f3b2a; text-decoration: underline; }
+        body.dark .about-detail-text .contact-item a { color: #d0d0d0; }
+        body.dark .about-detail-text .contact-item a:hover { color: #2d8f5a; }
+        .about-detail-text .feature-list { list-style: none; padding-left: 0; }
+        .about-detail-text .feature-list li { padding: 4px 0; display: flex; align-items: flex-start; gap: 10px; }
+        .about-detail-text .feature-list li i { color: #1e4d36; width: 18px; margin-top: 3px; font-size: 0.8rem; }
+        body.dark .about-detail-text .feature-list li i { color: #2d8f5a; }
+        .about-detail-text .dev-info {
+            background: #f0f7f0;
+            border-radius: 12px;
+            padding: 12px 16px;
+            margin: 8px 0 12px 0;
+            border-left: 4px solid #0f3b2a;
+            transition: background 0.3s, border-color 0.3s;
+        }
+        body.dark .about-detail-text .dev-info {
+            background: #1a2a1a;
+            border-color: #2d8f5a;
+        }
+        .about-detail-text .dev-info p { margin: 2px 0; font-size: 0.85rem; }
+        .about-detail-text .version-badge {
+            display: inline-block;
+            background: #0f3b2a;
+            color: #fff;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 0.8rem;
+            margin-bottom: 6px;
+        }
+        body.dark .about-detail-text .version-badge { background: #2d8f5a; color: #121212; }
+
+        /* ==================== BOUTON RETOUR GEMINI ==================== */
+        #backToLiftAppBtn {
+            position: fixed;
+            bottom: 180px;
+            right: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 30px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            z-index: 9999;
+            box-shadow: 0 4px 16px rgba(102, 126, 234, 0.5);
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        #backToLiftAppBtn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 24px rgba(102, 126, 234, 0.6);
+        }
+        #backToLiftAppBtn:active {
+            transform: scale(0.95);
+        }
+
+        /* ==================== OVERLAY DE CHARGEMENT ASSISTANT IA ==================== */
+        .ai-loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 300;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+        .ai-loading-overlay.show { display: flex; }
+
+        .ai-loading-container {
+            background: #ffffff;
+            width: 90%;
+            max-width: 420px;
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.3);
+            animation: slideUp 0.4s ease;
+            transition: background 0.3s;
+        }
+
+        .ai-loading-header {
+            display: flex;
+            align-items: center;
+            padding: 16px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #ffffff;
+        }
+        .ai-loading-header .back-arrow {
+            background: none;
+            border: none;
+            color: #ffffff;
+            font-size: 1.3rem;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 8px;
+            transition: background 0.2s;
+            margin-right: 10px;
+        }
+        .ai-loading-header .back-arrow:hover { background: rgba(255,255,255,0.15); }
+        .ai-loading-header .title {
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .ai-loading-body {
+            padding: 40px 30px 50px 30px;
+            text-align: center;
+        }
+
+        .ai-loading-spinner {
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 24px auto;
+            border: 4px solid #e8ece8;
+            border-top: 4px solid #0f3b2a;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .ai-loading-message {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #0f3b2a;
+            margin-bottom: 8px;
+        }
+
+        .ai-loading-submessage {
+            font-size: 0.85rem;
+            color: #6b7e75;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        body.dark .ai-loading-container {
+            background: #1c1c1c;
+        }
+        body.dark .ai-loading-message {
+            color: #f0f0f0;
+        }
+        body.dark .ai-loading-submessage {
+            color: #b0b0b0;
+        }
+        body.dark .ai-loading-spinner {
+            border-color: #2a2a2a;
+            border-top-color: #2d8f5a;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- OVERLAY CONNEXION / INSCRIPTION -->
+    <div class="auth-overlay" id="authOverlay">
+        <div class="auth-card" id="authCard">
+            <div class="auth-logo">🐔</div>
+            <div class="auth-title" id="authTitle">LiftApp</div>
+            <div class="auth-subtitle" id="authSubtitle">Votre Appli du Future</div>
+            <form id="loginForm" onsubmit="handleLogin(event)">
+                <div class="form-group"><label>Email</label><input type="email" id="loginEmail" placeholder="votre@email.com" required autocomplete="email" /></div>
+                <div class="form-group"><label>Mot de passe</label><input type="password" id="loginPassword" placeholder="Votre mot de passe" required /></div>
+                <button type="submit" class="auth-btn" id="loginBtn"><i class="fas fa-sign-in-alt"></i> Se connecter</button>
+                <div class="auth-loading" id="loginLoading"><i class="fas fa-spinner"></i> Connexion en cours...</div>
+                <div class="auth-error" id="loginError"><div class="error-text" id="loginErrorText"></div><button class="error-btn" onclick="retryLogin()" id="loginRetryBtn" style="display:none;">Reessayer</button></div>
+                <div class="forgot-password-link"><a onclick="handleForgotPassword()">Mot de passe oublié ?</a></div>
+            </form>
+            <form id="registerForm" onsubmit="handleRegister(event)" style="display:none;">
+                <div class="form-group"><label>Email</label><input type="email" id="regEmail" placeholder="votre@email.com" required autocomplete="email" /></div>
+                <div class="form-group"><label>Mot de passe</label><input type="password" id="regPassword" placeholder="Minimum 6 caracteres" required minlength="6" /></div>
+                <div class="form-group"><label>Confirmer le mot de passe</label><input type="password" id="regConfirm" placeholder="Repetez le mot de passe" required minlength="6" /></div>
+                <button type="submit" class="auth-btn" id="regBtn"><i class="fas fa-user-plus"></i> Creer un compte</button>
+                <div class="auth-loading" id="regLoading"><i class="fas fa-spinner"></i> Creation du compte...</div>
+                <div class="auth-error" id="regError"><div class="error-text" id="regErrorText"></div></div>
+                <div class="auth-success" id="regSuccess"><div class="success-text" id="regSuccessText"></div></div>
+            </form>
+            <div class="auth-switch" id="authSwitch">Pas de compte ? <a onclick="showRegister()">S'inscrire</a></div>
+            <div class="auth-footer">Connexion securisee • LiftApp v1.0</div>
+        </div>
+    </div>
+
+    <!-- HEADER -->
+    <header class="app-header">
+        <div class="header-title">
+            <button class="back-btn" id="backBtn" onclick="goBack()"><i class="fas fa-arrow-left"></i></button>
+            <h1 id="pageTitle" data-key="dashboard">Tableau de bord</h1>
+        </div>
+        <div class="header-right">
+            <span class="save-indicator" id="saveIndicator" title="Sauvegarde automatique"><i class="fas fa-sync-alt"></i></span>
+            <button class="logout-btn-header" onclick="logout()" title="Deconnexion"><i class="fas fa-sign-out-alt"></i></button>
+        </div>
+    </header>
+
+    <!-- PAGE: ACCUEIL -->
+    <div id="page-dashboard" class="page active">
+        <div class="grid-2">
+            <div class="card"><div class="card-icon"><i class="fas fa-drumstick-bite"></i></div><div class="card-label" data-key="poulets">Poulets</div><div class="card-value" id="totalPoulets">0</div></div>
+            <div class="card"><div class="card-icon"><i class="fas fa-coins"></i></div><div class="card-label" data-key="valeur_stock">Valeur stock</div><div class="card-value" id="valeurStock">0 FBU</div></div>
+            <div class="card"><div class="card-icon"><i class="fas fa-chart-line"></i></div><div class="card-label" data-key="revenus">Revenus</div><div class="card-value" id="totalRevenus">0 FBU</div></div>
+            <div class="card"><div class="card-icon red"><i class="fas fa-chart-line" style="transform: rotate(180deg);"></i></div><div class="card-label" data-key="depenses">Depenses</div><div class="card-value" id="totalDepenses">0 FBU</div></div>
+        </div>
+        <div class="grid-2" style="margin-top:14px;">
+            <div class="card"><div class="card-icon egg"><i class="fas fa-egg"></i></div><div class="card-label" data-key="stock_oeufs">Stock oeufs</div><div class="card-value" id="stockOeufs">0</div></div>
+            <div class="card" style="visibility:hidden;"></div>
+        </div>
+        <div class="card-large"><div class="label" data-key="solde_net">Solde net</div><div class="value" id="soldeNet">0 FBU</div></div>
+        <div class="section-title" data-key="categories">Categories</div>
+        <div class="cat-item" onclick="viewCategory('pondeuses')"><div class="left"><div class="name" data-key="pondeuses">Pondeuses</div><div class="desc" data-key="pondeuses_desc">Poules pondeuses</div></div><div class="count" id="countPondeuses">0</div></div>
+        <div class="cat-item" onclick="viewCategory('coqs')"><div class="left"><div class="name" data-key="coqs">Coqs</div><div class="desc" data-key="coqs_desc">Coqs reproducteurs</div></div><div class="count" id="countCoqs">0</div></div>
+        <div class="cat-item" onclick="viewCategory('poussins')"><div class="left"><div class="name" data-key="poussins">Poussins</div><div class="desc" data-key="poussins_desc">Jeunes poussins</div></div><div class="count" id="countPoussins">0</div></div>
+        <div class="cat-item" style="cursor:default;"><div class="left"><div class="name" data-key="oeufs">Oeufs</div><div class="desc" data-key="oeufs_desc">Oeufs en stock</div></div><div class="count egg-count" id="countOeufs">0</div></div>
+    </div>
+
+    <!-- PAGE: POULETS -->
+    <div id="page-poulets" class="page">
+        <h2 style="font-size:1.1rem; margin-bottom:12px;" id="pouletCategoryTitle">Pondeuses</h2>
+        <div class="table-card" id="pouletListContainer"><div id="emptyPouletMsg" style="text-align:center;padding:20px;color:#8a9a8a;" data-key="aucun_enregistrement">Aucun enregistrement dans cette categorie.</div></div>
+    </div>
+
+    <!-- PAGE: MOUVEMENTS -->
+    <div id="page-mouvements" class="page">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><h2 style="font-size:1.1rem;" data-key="journal_mouvements">Journal des mouvements</h2></div>
+        <div class="filter-nav" id="filterNav">
+            <button class="active" data-filter="all" onclick="setFilter('all')" data-key="tous">Tous</button>
+            <button data-filter="ventes" onclick="setFilter('ventes')" data-key="ventes">Ventes</button>
+            <button data-filter="achats" onclick="setFilter('achats')" data-key="achats">Achats</button>
+            <button data-filter="naissances" onclick="setFilter('naissances')" data-key="naissances">Naissances</button>
+            <button data-filter="mortalite" onclick="setFilter('mortalite')" data-key="mortalite_f">Mortalite</button>
+            <button data-filter="oeufs" onclick="setFilter('oeufs')" data-key="oeufs">Oeufs</button>
+            <button data-filter="autres" onclick="setFilter('autres')" data-key="autres_filtre">Autres</button>
+        </div>
+        <div class="table-card" id="mouvementListContainer"><div id="emptyMovMsg" style="text-align:center;padding:20px;color:#8a9a8a;" data-key="aucun_mouvement">Aucun mouvement enregistre.</div></div>
+    </div>
+
+    <!-- PAGE: FINANCE -->
+    <div id="page-finance" class="page">
+        <h2 style="font-size:1.1rem;margin-bottom:12px;" data-key="finances">Finances</h2>
+        <div style="background:#fff;border-radius:16px;padding:16px;border:1px solid #f0f2f0;margin-bottom:16px;" id="reportCard">
+            <div style="font-size:0.8rem;color:#6b7e75;font-weight:500;margin-bottom:8px;" data-key="rapport_mensuel">Rapport mensuel</div>
+            <div class="month-nav"><button onclick="changeMonth(-1)"><i class="fas fa-chevron-left"></i></button><span class="month-label" id="monthLabel">Juin 2026</span><button onclick="changeMonth(1)"><i class="fas fa-chevron-right"></i></button></div>
+            <div class="report-grid">
+                <div class="report-item"><div class="label" data-key="revenus">Revenus</div><div class="value positive" id="reportRevenus">0 FBU</div></div>
+                <div class="report-item"><div class="label" data-key="depenses">Depenses</div><div class="value negative" id="reportDepenses">0 FBU</div></div>
+                <div class="report-item"><div class="label" data-key="benefice">Benefice</div><div class="value" id="reportBenefice">0 FBU</div></div>
+            </div>
+            <div class="report-detail" id="reportDetail">
+                <div class="row"><span data-key="ventes_poules_f">Ventes poules</span><span class="val" id="rdVentesPoules">0 FBU</span></div>
+                <div class="row"><span data-key="ventes_oeufs_f">Vente oeufs</span><span class="val" id="rdVentesOeufs">0 FBU</span></div>
+                <div class="row"><span data-key="achat_aliment_f">Achat aliment</span><span class="val" id="rdAchatAliment">0 FBU</span></div>
+                <div class="row"><span data-key="investissement">Investissement</span><span class="val" id="rdInvestissement">0 FBU</span></div>
+                <div class="row"><span data-key="perte_oeufs_f">Perte oeufs</span><span class="val" id="rdPerteOeufs">0 oeufs</span></div>
+                <div class="row"><span data-key="autres">Autres</span><span class="val" id="rdAutres">0 FBU</span></div>
+            </div>
+            <div class="report-chart" id="reportChart">
+                <div class="bar rev" style="height:4px;"></div><div class="bar dep" style="height:4px;"></div><div class="bar rev" style="height:4px;"></div><div class="bar dep" style="height:4px;"></div><div class="bar rev" style="height:4px;"></div><div class="bar dep" style="height:4px;"></div><div class="bar rev" style="height:4px;"></div><div class="bar dep" style="height:4px;"></div><div class="bar rev" style="height:4px;"></div><div class="bar dep" style="height:4px;"></div>
+            </div>
+            <div class="report-summary"><span data-key="stock_actuel">Stock actuel</span> : <strong id="reportStock">0 FBU</strong> | <span data-key="total_poulets">Total poulets</span> : <strong id="reportTotalPoulets">0</strong> | <span data-key="stock_oeufs">Oeufs</span> : <strong id="reportOeufs">0</strong></div>
+        </div>
+        <div class="table-card" id="financeListContainer"><div id="emptyFinMsg" style="text-align:center;padding:20px;color:#8a9a8a;" data-key="aucune_transaction">Aucune transaction financiere.</div></div>
+    </div>
+
+    <!-- PAGE: PARAMETRE -->
+    <div id="page-parametre" class="page">
+        <h2 style="font-size:1.1rem;margin-bottom:16px;" data-key="parametre">Parametre</h2>
+        <div class="settings-nav">
+            <button class="active" onclick="switchSettings('langue')" id="btnLangue" data-key="langue">Langue</button>
+            <button onclick="switchSettings('profile')" id="btnProfile" data-key="profil">Profil</button>
+            <button onclick="switchSettings('security')" id="btnSecurity" data-key="securite">Securite</button>
+            <button onclick="switchSettings('mode')" id="btnMode" data-key="mode">Mode</button>
+            <button onclick="openAiLoading()" id="btnAi" style="position:relative;">🧠 Assistant IA<span class="ai-badge">AI</span></button>
+            <button onclick="switchSettings('about')" id="btnAbout" data-key="a_propos">A propos</button>
+            <button onclick="switchSettings('export')" id="btnExport" data-key="export">Export</button>
+            <button onclick="switchSettings('reset')" id="btnReset" data-key="reset">Reinitialiser</button>
+        </div>
+        <div class="settings-section active" id="section-langue"><div class="settings-card"><h3 data-key="choisir_langue">Choisissez votre langue</h3><label for="langSelect" data-key="langue_label">Langue</label><select id="langSelect" onchange="changeLanguage(this.value)"><option value="fr">Francais</option><option value="en">English</option><option value="rn">Ikirundi</option><option value="sw">Kiswahili</option></select><p style="margin-top:10px;font-size:0.8rem;color:#6b7e75;" data-key="langue_instant">Changement instantane</p></div></div>
+        <div class="settings-section" id="section-profile"><div class="settings-card"><h3>Modifier le profil</h3><div class="profile-photo-container"><div class="profile-photo" id="profilePhoto" onclick="document.getElementById('photoInput').click()"><i class="fas fa-user"></i></div><span class="profile-photo-label" onclick="document.getElementById('photoInput').click()">Changer la photo</span><input type="file" id="photoInput" accept="image/*" style="display:none;" onchange="uploadPhoto(this)" /></div><div class="form-group show"><label>Nom</label><input type="text" id="profileName" placeholder="Votre nom (optionnel)" /></div><div class="profile-email" id="profileEmail">Email : chargement...</div><button class="btn-submit show" onclick="updateProfile()" style="display:block;margin-top:10px;">Enregistrer le profil</button></div></div>
+        <div class="settings-section" id="section-security"><div class="settings-card"><h3>Changer le mot de passe</h3><div class="form-group show"><label>Ancien mot de passe</label><input type="password" id="oldPassword" placeholder="Votre mot de passe actuel" /></div><div class="form-group show"><label>Nouveau mot de passe</label><input type="password" id="newPassword" placeholder="Minimum 6 caracteres" minlength="6" /></div><div class="form-group show"><label>Confirmer le nouveau mot de passe</label><input type="password" id="confirmPassword" placeholder="Repetez le nouveau mot de passe" minlength="6" /></div><button class="btn-submit show" onclick="changePassword()" style="display:block;margin-top:10px;">Changer le mot de passe</button><div style="margin-top:20px;border-top:1px solid #e8ece8;padding-top:16px;"><h3 style="color:#c62828;">Supprimer le compte</h3><p style="font-size:0.85rem;color:#6b7e75;margin-bottom:10px;">Cette action est irreversible. Toutes vos donnees seront supprimees.</p><button class="danger-btn" onclick="showDeleteAccountModal()">Supprimer mon compte</button></div></div></div>
+        <div class="settings-section" id="section-mode"><div class="settings-card"><h3 data-key="choisir_theme">Choisissez votre theme</h3><label for="themeSelect" data-key="theme_label">Theme</label><select id="themeSelect" onchange="changeTheme(this.value)"><option value="light" data-key="clair">Clair</option><option value="dark" data-key="sombre">Sombre</option></select></div></div>
+
+        <!-- ==================== SECTION A PROPOS (MODIFIEE) ==================== -->
+        <div class="settings-section" id="section-about">
+            <div class="settings-card">
+                <h3 data-key="a_propos_titre">A propos de LiftApp</h3>
+                <div class="about-detail-text">
+
+                    <!-- Version 2.0 -->
+                    <div class="version-badge">Version 2.0</div>
+
+                    <!-- Développeur -->
+                    <div class="dev-info">
+                        <p><strong>Developpeur</strong> : Charmant Bright</p>
+                        <p><strong>Origine</strong> : Burundi</p>
+                        <p><strong>Etudiant</strong> : Universite du Lac Tanganyika - Informatique de Gestion</p>
+                        <p><strong>Annee</strong> : 2026</p>
+                    </div>
+
+                    <!-- Description -->
+                    <p style="margin-top:12px;"><strong>📝 Description</strong></p>
+                    <p>
+                        <strong>LiftApp</strong> est une application de gestion avicole complète, conçue pour accompagner les éleveurs de poulets dans la gestion quotidienne de leur activité. Développée en 2026 par <strong>Charmant Bright</strong>, étudiant en Informatique de Gestion à l'Université du Lac Tanganyika, LiftApp allie simplicité d'utilisation et puissance fonctionnelle.
+                    </p>
+                    <br>
+                    <p>
+                        L'application permet de suivre en temps réel l'ensemble des paramètres de votre élevage :
+                    </p>
+                    <ul class="feature-list">
+                        <li><i class="fas fa-check-circle"></i> <strong>Gestion des effectifs</strong> : suivez vos poulets par catégorie (pondeuses, coqs, poussins) avec un compteur en temps réel et un historique détaillé par lot.</li>
+                        <li><i class="fas fa-check-circle"></i> <strong>Gestion des œufs</strong> : enregistrez la production quotidienne, les ventes et les pertes. Un stock d'œufs est automatiquement mis à jour pour vous éviter les ruptures.</li>
+                        <li><i class="fas fa-check-circle"></i> <strong>Suivi financier</strong> : visualisez vos revenus, vos dépenses et votre solde net. L'application calcule automatiquement votre bénéfice et génère des rapports mensuels pour analyser vos performances.</li>
+                        <li><i class="fas fa-check-circle"></i> <strong>Journal des mouvements</strong> : chaque action (vente, achat, naissance, mortalité) est enregistrée avec date, quantité et montant. Vous pouvez filtrer par type d'opération pour retrouver rapidement une information.</li>
+                        <li><i class="fas fa-check-circle"></i> <strong>Export des données</strong> : générez des fichiers CSV ou PDF pour vos rapports comptables ou vos analyses externes.</li>
+                        <li><i class="fas fa-check-circle"></i> <strong>Mode hors-ligne</strong> : vos données sont sauvegardées localement et synchronisées automatiquement lorsque vous êtes connecté.</li>
+                        <li><i class="fas fa-check-circle"></i> <strong>Multi-langues</strong> : l'application est disponible en français, anglais, kirundi et kiswahili pour s'adapter à tous les utilisateurs.</li>
+                        <li><i class="fas fa-check-circle"></i> <strong>Thème clair/sombre</strong> : choisissez l'affichage qui vous convient le mieux, même en basse luminosité.</li>
+                        <li><i class="fas fa-check-circle"></i> <strong>Assistant IA intégré</strong> : posez vos questions sur votre élevage, l'IA Gemini vous répond avec des conseils professionnels et techniques basés sur vos données réelles.</li>
+                    </ul>
+                    <br>
+                    <p>
+                        <strong>LiftApp</strong> est l'outil idéal pour tout éleveur souhaitant professionnaliser sa gestion, optimiser ses performances et prendre des décisions éclairées. Simple, intuitive et accessible, elle vous accompagne au quotidien pour faire prospérer votre activité avicole.
+                    </p>
+
+                    <!-- Contact -->
+                    <p style="margin-top:16px;"><strong>📞 Contact</strong></p>
+                    <div class="contact-item">
+                        <i class="fab fa-whatsapp whatsapp"></i>
+                        <a href="https://wa.me/25761495075" target="_blank">WhatsApp : +257 61 495 075</a>
+                    </div>
+                    <div class="contact-item">
+                        <i class="fas fa-envelope email"></i>
+                        <a href="mailto:ndihokubwayocharmant@gmail.com">Email : ndihokubwayocharmant@gmail.com</a>
+                    </div>
+                    <div class="contact-item">
+                        <i class="fab fa-facebook facebook"></i>
+                        <a href="https://web.facebook.com/charmantbright" target="_blank">Facebook : Charmant Bright</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-section" id="section-export"><div class="settings-card"><h3 data-key="export_donnees">Export des donnees</h3><p style="font-size:0.85rem;color:#6b7e75;margin-bottom:14px;" data-key="export_desc">Exporter toutes vos donnees</p><div class="export-buttons"><button class="export-csv" onclick="exportCSV()"><i class="fas fa-file-csv"></i> CSV</button><button class="export-pdf" onclick="exportPDF()"><i class="fas fa-file-pdf"></i> PDF</button></div></div></div>
+        <div class="settings-section" id="section-reset"><div class="settings-card"><h3 data-key="reset_titre">Reinitialiser toutes les donnees</h3><p class="reset-desc" data-key="reset_desc">Cette action supprimera toutes vos donnees.</p><button class="btn-reset" onclick="showResetModal()" data-key="reset_btn">Reinitialiser</button></div></div>
+    </div>
+
+    <!-- OVERLAY ASSISTANT IA PLEIN ECRAN -->
+    <div class="ai-fullscreen-overlay" id="aiFullscreenOverlay">
+        <div class="ai-fullscreen-container">
+            <div class="ai-fullscreen-header">
+                <div class="ai-logo-title">🧠 Assistant LiftApp</div>
+                <button class="ai-back-btn" onclick="closeAiFullscreen()"><i class="fas fa-arrow-left"></i></button>
+            </div>
+            <div class="ai-fullscreen-messages" id="aiFullscreenMessages">
+                <div class="ai-message bot">
+                    <div class="ai-message-content">👋 Bonjour ! Je suis <strong>Assistant LiftApp</strong>. Posez-moi vos questions !</div>
+                    <div class="ai-message-time">À l'instant</div>
+                </div>
+            </div>
+            <div class="ai-fullscreen-input-bar">
+                <button class="ai-history-btn" onclick="openAiHistory()" title="Historique">⋯</button>
+                <input type="text" id="aiFullscreenInput" placeholder="Posez votre question..." onkeypress="if(event.key==='Enter')sendAiFullscreenMessage()" />
+                <button class="send-btn" onclick="sendAiFullscreenMessage()"><i class="fas fa-arrow-up"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PANNEAU HISTORIQUE -->
+    <div class="ai-history-backdrop" id="aiHistoryBackdrop" onclick="closeAiHistory()"></div>
+    <div class="ai-history-panel" id="aiHistoryPanel">
+        <div class="ai-history-panel-header"><span>Historique</span><button onclick="closeAiHistory()">✕</button></div>
+        <div class="ai-history-list" id="aiHistoryList"><div style="text-align:center;padding:20px;color:#8a9a8a;font-size:0.8rem;">Aucune conversation sauvegardee</div></div>
+    </div>
+
+    <!-- FAB -->
+    <button class="fab" id="mainFab" onclick="openModal()"><i class="fas fa-plus"></i></button>
+    <button class="fab ai-fab" id="aiFab" onclick="openAiFromFab()" title="Assistant IA"><i class="fas fa-brain"></i></button>
+
+    <!-- NAVIGATION BAS -->
+    <nav class="bottom-nav">
+        <button class="nav-item active" data-page="dashboard" onclick="switchTab('dashboard')"><i class="fas fa-th-large"></i> <span data-key="accueil">Accueil</span></button>
+        <button class="nav-item" data-page="poulets" onclick="switchTab('poulets')"><i class="fas fa-egg"></i> <span data-key="poulets_nav">Poulets</span></button>
+        <button class="nav-item" data-page="mouvements" onclick="switchTab('mouvements')"><i class="fas fa-exchange-alt"></i> <span data-key="mouvements_nav">Mouvements</span></button>
+        <button class="nav-item" data-page="finance" onclick="switchTab('finance')"><i class="fas fa-wallet"></i> <span data-key="finance_nav">Finance</span></button>
+        <button class="nav-item" data-page="parametre" onclick="switchTab('parametre')"><i class="fas fa-cog"></i> <span data-key="parametre_nav">Parametre</span></button>
+    </nav>
+
+    <!-- MODALE PRINCIPALE -->
+    <div class="modal-overlay" id="actionModal">
+        <div class="modal-content">
+            <div class="modal-header"><h2 data-key="nouveau_mouvement">Nouveau mouvement</h2><button class="close" onclick="closeModal()">&times;</button></div>
+            <div class="quick-options">
+                <div class="q-opt" onclick="selectAction('vente_poules')"><i class="fas fa-dollar-sign"></i><span data-key="vente_poules">Vente poules</span></div>
+                <div class="q-opt" onclick="selectAction('vente_oeufs')"><i class="fas fa-dollar-sign"></i><span data-key="vente_oeufs">Vente oeufs</span></div>
+                <div class="q-opt" onclick="selectAction('production_oeufs')"><i class="fas fa-arrow-down" style="color:#e65100;"></i><span data-key="production_oeufs">Production oeufs</span></div>
+                <div class="q-opt" onclick="selectAction('perte_oeufs')"><i class="fas fa-egg" style="color:#e65100;"></i><span data-key="perte_oeufs">Perte oeufs</span></div>
+                <div class="q-opt" onclick="selectAction('achat_aliment')"><i class="fas fa-seedling"></i><span data-key="achat_aliment">Achat aliment</span></div>
+                <div class="q-opt" onclick="selectAction('achat_poules')"><i class="fas fa-cart-plus"></i><span data-key="achat_poules">Achat poulets</span></div>
+                <div class="q-opt" onclick="selectAction('naissance')"><i class="fas fa-egg" style="transform:rotate(180deg);"></i><span data-key="naissance">Naissance poussins</span></div>
+                <div class="q-opt" onclick="selectAction('mortalite')"><i class="fas fa-skull"></i><span data-key="mortalite">Mortalite</span></div>
+                <div class="q-opt" onclick="selectAction('autre')"><i class="fas fa-ellipsis-h"></i><span data-key="autre">Autre</span></div>
+            </div>
+            <form id="actionForm" onsubmit="submitAction(event)"><div id="formFields"></div><button type="submit" class="btn-submit" id="submitBtn" data-key="enregistrer">Enregistrer</button></form>
+        </div>
+    </div>
+
+    <!-- MODALES REINITIALISATION -->
+    <div class="modal-overlay" id="resetModal"><div class="modal-content modal-reset-content"><div class="modal-header"><h2>Attention</h2><button class="close" onclick="closeResetModal()">&times;</button></div><div class="reset-modal-text"><p class="big-text">Toutes les donnees seront effacees !</p><p class="small-text">Cette action est irreversible.</p></div><div class="reset-modal-buttons"><button class="btn-refuse" onclick="closeResetModal()">Refuser</button><button class="btn-accept" onclick="confirmReset()">Accepter</button></div></div></div>
+    <div class="modal-overlay" id="confirmResetModal"><div class="modal-content modal-reset-content"><div class="modal-header"><h2 class="danger">Derniere confirmation</h2><button class="close" onclick="closeConfirmResetModal()">&times;</button></div><div class="reset-modal-text"><p class="big-text danger">Confirmer la suppression ?</p></div><div class="reset-modal-buttons"><button class="btn-refuse" onclick="closeConfirmResetModal()">Annuler</button><button class="btn-confirm" onclick="executeReset()">Confirmer</button></div></div></div>
+
+    <!-- MODALES SUPPRESSION COMPTE -->
+    <div class="modal-overlay" id="deleteAccountModal"><div class="modal-content modal-reset-content"><div class="modal-header"><h2 class="danger">Supprimer le compte</h2><button class="close" onclick="closeDeleteAccountModal()">&times;</button></div><div class="reset-modal-text"><p class="big-text danger">Etes-vous sur ?</p></div><div class="reset-modal-buttons"><button class="btn-refuse" onclick="closeDeleteAccountModal()">Annuler</button><button class="btn-confirm" onclick="confirmDeleteAccount()">Confirmer</button></div></div></div>
+    <div class="modal-overlay" id="confirmDeleteAccountModal"><div class="modal-content modal-reset-content"><div class="modal-header"><h2 class="danger">Derniere chance</h2><button class="close" onclick="closeConfirmDeleteAccountModal()">&times;</button></div><div class="reset-modal-text"><p class="big-text danger">Cette action est irreversible !</p></div><div class="reset-modal-buttons"><button class="btn-refuse" onclick="closeConfirmDeleteAccountModal()">Annuler</button><button class="btn-confirm" onclick="executeDeleteAccount()">Supprimer definitivement</button></div></div></div>
+
+    <!-- ==================== OVERLAY DE CHARGEMENT ASSISTANT IA ==================== -->
+    <div class="ai-loading-overlay" id="aiLoadingOverlay">
+        <div class="ai-loading-container">
+            <div class="ai-loading-header">
+                <button class="back-arrow" onclick="closeAiLoading()" aria-label="Retour à LiftApp">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <span class="title">Assistant LiftApp</span>
+            </div>
+            <div class="ai-loading-body">
+                <div class="ai-loading-spinner"></div>
+                <div class="ai-loading-message">Veuillez patienter...</div>
+                <div class="ai-loading-submessage">Assistant LiftApp en préparation</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== ASSISTANT IA : OUVERTURE GEMINI AVEC RETOUR ====================
+        let geminiWindow = null;
+        let geminiCheckInterval = null;
+        let aiLoadingTimer = null;
+
+        function openAiLoading() {
+            const overlay = document.getElementById('aiLoadingOverlay');
+            overlay.classList.add('show');
+            if (aiLoadingTimer) { clearTimeout(aiLoadingTimer); aiLoadingTimer = null; }
+            aiLoadingTimer = setTimeout(function() { openGeminiWithBack(); }, 3000);
+        }
+
+        function openGeminiWithBack() {
+            geminiWindow = window.open('https://gemini.google.com', '_blank', 'toolbar=yes,location=yes,menubar=yes,status=yes,scrollbars=yes,resizable=yes,width=1200,height=800');
+            closeAiLoading();
+            showBackToLiftAppButton();
+            if (geminiCheckInterval) { clearInterval(geminiCheckInterval); }
+            geminiCheckInterval = setInterval(function() {
+                if (geminiWindow && geminiWindow.closed) {
+                    hideBackToLiftAppButton();
+                    clearInterval(geminiCheckInterval);
+                    geminiCheckInterval = null;
+                }
+            }, 1000);
+        }
+
+        function closeAiLoading() {
+            const overlay = document.getElementById('aiLoadingOverlay');
+            overlay.classList.remove('show');
+            if (aiLoadingTimer) { clearTimeout(aiLoadingTimer); aiLoadingTimer = null; }
+        }
+
+        function showBackToLiftAppButton() {
+            const oldBtn = document.getElementById('backToLiftAppBtn');
+            if (oldBtn) oldBtn.remove();
+            const btn = document.createElement('button');
+            btn.id = 'backToLiftAppBtn';
+            btn.innerHTML = '↺ Retour à LiftApp';
+            btn.onclick = function() { window.focus(); };
+            document.body.appendChild(btn);
+        }
+
+        function hideBackToLiftAppButton() {
+            const btn = document.getElementById('backToLiftAppBtn');
+            if (btn) btn.remove();
+        }
+
+        // ==================== FIREBASE ====================
+        let auth, db, storage;
+        try {
+            const firebaseConfig = {
+                apiKey: "AIzaSyB4y0qnpbRH_hqXuNALiNFj3aosFpl_hw4",
+                authDomain: "liftappnew.firebaseapp.com",
+                projectId: "liftappnew",
+                storageBucket: "liftappnew.firebasestorage.app",
+                messagingSenderId: "705917549661",
+                appId: "1:705917549661:web:2e184292dec3aac03ca1b4",
+                measurementId: "G-VFTJPDN39D"
+            };
+            firebase.initializeApp(firebaseConfig);
+            auth = firebase.auth(); db = firebase.firestore(); storage = firebase.storage();
+            if (auth.setPersistence) auth.setPersistence(firebase.auth.Auth.Persistence.NONE).catch(() => {});
+            if (db.settings) db.settings({ ignoreUndefinedProperties: true });
+            console.log('LiftApp Firebase initialise');
+        } catch(e) { auth = null; db = null; storage = null; }
+
+        (function() { try { emailjs.init({ publicKey: "votre_public_key_emailjs" }); } catch(e) {} })();
+
+        // ==================== DONNEES ====================
+        let data = { poulets: { pondeuses: [], coqs: [], poussins: [] }, oeufs: { stock: 0, historique: [] }, mouvements: [], finances: [], revenus: 0, depenses: 0 };
+        let currentUser = null, isLoggedIn = false, currentUserProfile = { displayName: '', photoURL: '', email: '' };
+        let aiConversationHistory = [], currentAiConversationId = null;
+        let currentLang = 'fr', currentFilter = 'all', currentMonth = new Date().getMonth(), currentYear = new Date().getFullYear(), pageHistory = ['dashboard'], currentAction = null;
+
+        function getErrorMessage(error) {
+            const msgs = {
+                'auth/network-request-failed': { fr: 'Probleme de connexion internet.', en: 'Internet problem.', rn: 'Ikibazo c\'uruhurirane.', sw: 'Tatizo la mtandao.' },
+                'auth/too-many-requests': { fr: 'Trop de tentatives.', en: 'Too many attempts.', rn: 'Wagerageje kenshi.', sw: 'Majaribio mengi.' },
+                'auth/user-not-found': { fr: 'Aucun compte trouve.', en: 'No account found.', rn: 'Nta konti.', sw: 'Hakuna akaunti.' },
+                'auth/wrong-password': { fr: 'Mot de passe incorrect.', en: 'Wrong password.', rn: 'Ijambo ry\'ibanga si ryo.', sw: 'Nenosiri si sahihi.' },
+                'auth/invalid-email': { fr: 'Email invalide.', en: 'Invalid email.', rn: 'Email itari yo.', sw: 'Barua pepe si sahihi.' },
+                'auth/invalid-credential': { fr: 'Identifiants invalides.', en: 'Invalid credentials.', rn: 'Injira neza.', sw: 'Vitambulisho si sahihi.' },
+                'auth/email-already-in-use': { fr: 'Email deja utilise.', en: 'Email already in use.', rn: 'Email irahari.', sw: 'Barua pepe tayari ipo.' },
+                'auth/weak-password': { fr: 'Mot de passe faible.', en: 'Weak password.', rn: 'Ijambo ry\'ibanga rirakaye.', sw: 'Nenosiri dhaifu.' },
+                'default': { fr: 'Une erreur est survenue.', en: 'An error occurred.', rn: 'Ikibazo cyabaye.', sw: 'Hitilafu imetokea.' }
+            };
+            const lang = currentLang || 'fr';
+            if (error.code && msgs[error.code]) return msgs[error.code][lang] || msgs[error.code]['fr'];
+            return msgs['default'][lang] || msgs['default']['fr'];
+        }
+
+        function isNetworkError(error) { return error.code && ['auth/network-request-failed', 'auth/too-many-requests'].includes(error.code); }
+        function showLoginError(message, isNetwork) {
+            const errorEl = document.getElementById('loginError'), textEl = document.getElementById('loginErrorText'), retryBtn = document.getElementById('loginRetryBtn');
+            textEl.textContent = message; errorEl.classList.add('show');
+            retryBtn.style.display = isNetwork ? 'inline-block' : 'none';
+        }
+        function retryLogin() {
+            const email = document.getElementById('loginEmail').value.trim(), password = document.getElementById('loginPassword').value;
+            if (email && password) { document.getElementById('loginError').classList.remove('show'); handleLogin(new Event('submit')); }
+        }
+        function showRegister() {
+            document.getElementById('loginForm').style.display = 'none'; document.getElementById('registerForm').style.display = 'block';
+            document.getElementById('authSwitch').innerHTML = 'Deja un compte ? <a onclick="showLogin()">Se connecter</a>';
+            document.getElementById('loginError').classList.remove('show'); document.getElementById('regError').classList.remove('show'); document.getElementById('regSuccess').classList.remove('show');
+        }
+        function showLogin() {
+            document.getElementById('loginForm').style.display = 'block'; document.getElementById('registerForm').style.display = 'none';
+            document.getElementById('authSwitch').innerHTML = 'Pas de compte ? <a onclick="showRegister()">S\'inscrire</a>';
+            document.getElementById('loginError').classList.remove('show'); document.getElementById('regError').classList.remove('show'); document.getElementById('regSuccess').classList.remove('show');
+        }
+        function shakeCard() { const card = document.getElementById('authCard'); if (card) { card.classList.remove('shake'); void card.offsetWidth; card.classList.add('shake'); } }
+        function handleForgotPassword() {
+            const email = document.getElementById('loginEmail').value.trim();
+            if (!email) { showLoginError('Veuillez entrer votre email.', false); shakeCard(); return; }
+            if (!auth) { showLoginError('Firebase non disponible.', true); return; }
+            auth.sendPasswordResetEmail(email).then(() => {
+                const errorEl = document.getElementById('loginError'), textEl = document.getElementById('loginErrorText');
+                textEl.textContent = 'Un email de reinitialisation a ete envoye a ' + email;
+                errorEl.className = 'auth-success show'; document.getElementById('loginRetryBtn').style.display = 'none';
+            }).catch((error) => { showLoginError(getErrorMessage(error), isNetworkError(error)); shakeCard(); });
+        }
+        async function handleLogin(e) {
+            e.preventDefault();
+            if (!auth) { showLoginError('Firebase non disponible.', true); return; }
+            const email = document.getElementById('loginEmail').value.trim(), password = document.getElementById('loginPassword').value;
+            const errorEl = document.getElementById('loginError'), loadingEl = document.getElementById('loginLoading'), btnEl = document.getElementById('loginBtn');
+            errorEl.classList.remove('show'); loadingEl.classList.add('show'); btnEl.disabled = true;
+            try { await auth.signInWithEmailAndPassword(email, password); }
+            catch (error) { loadingEl.classList.remove('show'); btnEl.disabled = false; showLoginError(getErrorMessage(error), isNetworkError(error)); shakeCard(); }
+        }
+        async function handleRegister(e) {
+            e.preventDefault();
+            if (!auth) { document.getElementById('regErrorText').textContent = 'Firebase non disponible.'; document.getElementById('regError').classList.add('show'); return; }
+            const email = document.getElementById('regEmail').value.trim(), password = document.getElementById('regPassword').value, confirm = document.getElementById('regConfirm').value;
+            const errorEl = document.getElementById('regError'), textErrorEl = document.getElementById('regErrorText'), successEl = document.getElementById('regSuccess'), textSuccessEl = document.getElementById('regSuccessText'), loadingEl = document.getElementById('regLoading'), btnEl = document.getElementById('regBtn');
+            errorEl.classList.remove('show'); successEl.classList.remove('show');
+            if (password !== confirm) { textErrorEl.textContent = 'Les mots de passe ne correspondent pas.'; errorEl.classList.add('show'); shakeCard(); return; }
+            if (password.length < 6) { textErrorEl.textContent = 'Le mot de passe doit avoir au moins 6 caracteres.'; errorEl.classList.add('show'); shakeCard(); return; }
+            loadingEl.classList.add('show'); btnEl.disabled = true;
+            try {
+                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                textSuccessEl.textContent = 'Compte cree avec succes !'; successEl.classList.add('show'); loadingEl.classList.remove('show'); btnEl.disabled = false;
+                setTimeout(() => { showLogin(); document.getElementById('loginEmail').value = email; }, 1500);
+            } catch (error) { loadingEl.classList.remove('show'); btnEl.disabled = false; textErrorEl.textContent = getErrorMessage(error); errorEl.classList.add('show'); shakeCard(); }
+        }
+        function logout() { if (auth) { auth.signOut(); } else { location.reload(); } }
+
+        // ==================== TRADUCTIONS ====================
+        const translations = {
+            fr: {
+                dashboard:'Tableau de bord',poulets:'Poulets',valeur_stock:'Valeur stock',revenus:'Revenus',depenses:'Depenses',solde_net:'Solde net',
+                categories:'Categories',pondeuses:'Pondeuses',pondeuses_desc:'Poules pondeuses',coqs:'Coqs',coqs_desc:'Coqs reproducteurs',
+                poussins:'Poussins',poussins_desc:'Jeunes poussins',oeufs:'Oeufs',oeufs_desc:'Oeufs en stock',stock_oeufs:'Stock oeufs',
+                aucun_enregistrement:'Aucun enregistrement.',journal_mouvements:'Journal des mouvements',aucun_mouvement:'Aucun mouvement.',
+                finances:'Finances',aucune_transaction:'Aucune transaction.',parametre:'Parametre',langue:'Langue',mode:'Mode',a_propos:'A propos',
+                choisir_langue:'Choisissez votre langue',langue_label:'Langue',langue_instant:'Changement instantane',
+                choisir_theme:'Choisissez votre theme',theme_label:'Theme',clair:'Clair',sombre:'Sombre',
+                a_propos_titre:'A propos de LiftApp',accueil:'Accueil',poulets_nav:'Poulets',mouvements_nav:'Mouvements',finance_nav:'Finance',parametre_nav:'Parametre',
+                nouveau_mouvement:'Nouveau mouvement',vente_poules:'Vente poules',vente_oeufs:'Vente oeufs',production_oeufs:'Production oeufs',
+                perte_oeufs:'Perte oeufs',achat_aliment:'Achat aliment',achat_poules:'Achat poulets',naissance:'Naissance poussins',mortalite:'Mortalite',
+                autre:'Autre',nature:'Nature',prix_total:'Prix Total',description:'Description',type_revenu:'Revenu',type_depense:'Depense',
+                autres:'Autres',autres_filtre:'Autres',
+                enregistrer:'Enregistrer',categorie:'Categorie',quantite_vendue:'Quantite vendue',montant_total:'Montant total',client:'Client',
+                nombre_oeufs:'Nombre d\'oeufs',type_aliment:'Type d\'aliment',quantite_kg:'Quantite (KG)',quantite:'Quantite',fournisseur:'Fournisseur',
+                quantite_poussins:'Quantite de poussins nes',prix_total_estime:'Prix total estime',categorie_concernée:'Categorie concerne',
+                quantite_perdue:'Quantite perdue',montant_imagine:'Montant imaginaire perdu',lot_inconnu:'Lot inconnu',ajoute_le:'Ajoute le',betes:'betes',
+                back:'Retour',tous:'Tous',ventes:'Ventes',achats:'Achats',naissances:'Naissances',mortalite_f:'Mortalite',rapport_mensuel:'Rapport mensuel',
+                benefice:'Benefice',ventes_poules_f:'Ventes poules',ventes_oeufs_f:'Vente oeufs',achat_aliment_f:'Achat aliment',investissement:'Investissement',
+                perte_oeufs_f:'Perte oeufs',stock_actuel:'Stock actuel',total_poulets:'Total poulets',export:'Export',export_donnees:'Export des donnees',
+                export_desc:'Exporter toutes vos donnees',prix_unitaire:'Prix unitaire',total:'Total',quantite_produite:'Quantite produite',
+                quantite_perdue_oeufs:'Quantite perdue',reset:'Reinitialiser',reset_titre:'Reinitialiser toutes les donnees',
+                reset_desc:'Cette action supprimera toutes vos donnees.',reset_btn:'Reinitialiser',profil:'Profil',securite:'Securite'
+            },
+            en: {
+                dashboard:'Dashboard',poulets:'Chickens',valeur_stock:'Stock value',revenus:'Revenue',depenses:'Expenses',solde_net:'Net balance',
+                categories:'Categories',pondeuses:'Layers',pondeuses_desc:'Laying hens',coqs:'Roosters',coqs_desc:'Breeding roosters',
+                poussins:'Chicks',poussins_desc:'Young chicks',oeufs:'Eggs',oeufs_desc:'Eggs in stock',stock_oeufs:'Egg stock',
+                aucun_enregistrement:'No records.',journal_mouvements:'Movement log',aucun_mouvement:'No movements.',finances:'Finances',
+                aucune_transaction:'No transactions.',parametre:'Settings',langue:'Language',mode:'Theme',a_propos:'About',
+                choisir_langue:'Choose language',langue_label:'Language',langue_instant:'Instant change',
+                choisir_theme:'Choose your theme',theme_label:'Theme',clair:'Light',sombre:'Dark',
+                a_propos_titre:'About LiftApp',accueil:'Home',poulets_nav:'Chickens',mouvements_nav:'Movements',finance_nav:'Finance',parametre_nav:'Settings',
+                nouveau_mouvement:'New movement',vente_poules:'Sell chickens',vente_oeufs:'Sell eggs',production_oeufs:'Egg production',
+                perte_oeufs:'Egg loss',achat_aliment:'Buy feed',achat_poules:'Buy chickens',naissance:'Birth of chicks',mortalite:'Mortality',
+                autre:'Other',nature:'Nature',prix_total:'Total Price',description:'Description',type_revenu:'Income',type_depense:'Expense',
+                autres:'Others',autres_filtre:'Others',
+                enregistrer:'Save',categorie:'Category',quantite_vendue:'Quantity sold',montant_total:'Total amount',client:'Client',
+                nombre_oeufs:'Number of eggs',type_aliment:'Feed type',quantite_kg:'Quantity (KG)',quantite:'Quantity',fournisseur:'Supplier',
+                quantite_poussins:'Chicks born',prix_total_estime:'Estimated price',categorie_concernée:'Category',
+                quantite_perdue:'Quantity lost',montant_imagine:'Amount lost',lot_inconnu:'Unknown batch',ajoute_le:'Added on',betes:'animals',
+                back:'Back',tous:'All',ventes:'Sales',achats:'Purchases',naissances:'Births',mortalite_f:'Mortality',rapport_mensuel:'Monthly report',
+                benefice:'Profit',ventes_poules_f:'Chicken sales',ventes_oeufs_f:'Egg sales',achat_aliment_f:'Feed purchase',investissement:'Investment',
+                perte_oeufs_f:'Egg loss',stock_actuel:'Current stock',total_poulets:'Total chickens',export:'Export',export_donnees:'Export data',
+                export_desc:'Export all data',prix_unitaire:'Unit price',total:'Total',quantite_produite:'Quantity produced',quantite_perdue_oeufs:'Quantity lost',
+                reset:'Reset',reset_titre:'Reset all data',reset_desc:'This will delete all data.',reset_btn:'Reset',profil:'Profile',securite:'Security'
+            },
+            rn: {
+                dashboard:'Akajisho',poulets:'Inkoko',valeur_stock:'Agaciro k\'ubucuruzi',revenus:'Amafaranga yinjira',depenses:'Amafaranga asohoka',solde_net:'Isigaye net',
+                categories:'Ibice',pondeuses:'Inkoko zitera amagi',pondeuses_desc:'Inkoko zitera amagi',coqs:'Isake',coqs_desc:'Isake zororoka',
+                poussins:'Inkoko ntoya',poussins_desc:'Inkoko ntoya zishasha',oeufs:'Amagi',oeufs_desc:'Amagi mu bucuruzi',stock_oeufs:'Amagi mu bucuruzi',
+                aucun_enregistrement:'Nta bitekwa.',journal_mouvements:'Inkotanyanyuma',aucun_mouvement:'Nta mwigendanire.',finances:'Amafaranga',
+                aucune_transaction:'Nta mafaranga.',parametre:'Ibiyobora',langue:'Ururimi',mode:'Imyandikire',a_propos:'Ikivuga',
+                choisir_langue:'Hitamo ururimi',langue_label:'Ururimi',langue_instant:'Impinduka ako kanya',
+                choisir_theme:'Hitamo imyandikire',theme_label:'Imyandikire',clair:'Imyandikire y\'urumuri',sombre:'Imyandikire y\'ijoro',
+                a_propos_titre:'Ikivuga kuri LiftApp',accueil:'Ahabanza',poulets_nav:'Inkoko',mouvements_nav:'Imigendane',finance_nav:'Amafaranga',parametre_nav:'Ibiyobora',
+                nouveau_mouvement:'Imigendane nshasha',vente_poules:'Gurisha inkoko',vente_oeufs:'Gurisha amagi',production_oeufs:'Kuvuna amagi',
+                perte_oeufs:'Gutakaza amagi',achat_aliment:'Kugura ifunguro',achat_poules:'Kugura inkoko',naissance:'Kuvuka kw\'inkoko ntoya',mortalite:'Gupfa kw\'inkoko',
+                autre:'Ikindi',nature:'Kamere',prix_total:'Igiciro cose',description:'Insobanuro',type_revenu:'Amafaranga yinjira',type_depense:'Amafaranga asohoka',
+                autres:'Ibindi',autres_filtre:'Ibindi',
+                enregistrer:'Andika',categorie:'Igiciro',quantite_vendue:'Umubare waziritse',montant_total:'Amafaranga yose',client:'Umuguzi',
+                nombre_oeufs:'Umubare w\'amagi',type_aliment:'Ubwoko bw\'ifunguro',quantite_kg:'Ingano (KG)',quantite:'Ingano',fournisseur:'Uwagurisha',
+                quantite_poussins:'Umubare w\'inkoko ntoya zavutse',prix_total_estime:'Amafaranga yose yagereranijwe',
+                categorie_concernée:'Igiciro kigizwe',quantite_perdue:'Ingano yazimiye',montant_imagine:'Amafaranga yagereranijwe yazimiye',lot_inconnu:'Ikiciro kitazwi',
+                ajoute_le:'Yongewe ku',betes:'inyamaswa',back:'Subira',tous:'Byose',ventes:'Ibigurishwa',achats:'Ibiguzi',naissances:'Ivyavutse',mortalite_f:'Urupfu',
+                rapport_mensuel:'Raporo y\'ukwezi',benefice:'Inyungu',ventes_poules_f:'Kugurisha inkoko',ventes_oeufs_f:'Kugurisha amagi',achat_aliment_f:'Kugura ifunguro',
+                investissement:'Ishoramari',perte_oeufs_f:'Gutakaza amagi',stock_actuel:'Ibicuruzwa bigihari',total_poulets:'Inkoko zose',export:'Kuvanako',
+                export_donnees:'Kuvanako amakuru',export_desc:'Kuvanako amakuru yawe yose',prix_unitaire:'Igiciro kimwe',total:'Igiciro cose',
+                quantite_produite:'Ingano yavunzwe',quantite_perdue_oeufs:'Ingano yatakaye',reset:'Gusiba',reset_titre:'Gusiba amakuru yose',
+                reset_desc:'Iki gikorwa kizisiba amakuru yawe yose.',reset_btn:'Gusiba',profil:'Indangamuntu',securite:'Umutekano'
+            },
+            sw: {
+                dashboard:'Dashibodi',poulets:'Kuku',valeur_stock:'Thamani ya hisa',revenus:'Mapato',depenses:'Matumizi',solde_net:'Salio halisi',
+                categories:'Kategoria',pondeuses:'Kuku wa mayai',pondeuses_desc:'Kuku wa mayai',coqs:'Jogoo',coqs_desc:'Jogoo wa kuzalisha',
+                poussins:'Vifaranga',poussins_desc:'Vifaranga wachanga',oeufs:'Mayai',oeufs_desc:'Mayai hisa',stock_oeufs:'Hisa ya mayai',
+                aucun_enregistrement:'Hakuna rekodi.',journal_mouvements:'Historia ya shughuli',aucun_mouvement:'Hakuna shughuli.',finances:'Fedha',
+                aucune_transaction:'Hakuna shughuli za kifedha.',parametre:'Mipangilio',langue:'Lugha',mode:'Mandhari',a_propos:'Kuhusu',
+                choisir_langue:'Chagua lugha',langue_label:'Lugha',langue_instant:'Mabadiliko ya papo hapo',
+                choisir_theme:'Chagua mandhari yako',theme_label:'Mandhari',clair:'Mwanga',sombre:'Giza',
+                a_propos_titre:'Kuhusu LiftApp',accueil:'Nyumbani',poulets_nav:'Kuku',mouvements_nav:'Shughuli',finance_nav:'Fedha',parametre_nav:'Mipangilio',
+                nouveau_mouvement:'Shughuli mpya',vente_poules:'Kuuza kuku',vente_oeufs:'Kuuza mayai',production_oeufs:'Uzalishaji wa mayai',
+                perte_oeufs:'Upotevu wa mayai',achat_aliment:'Kununua chakula',achat_poules:'Kununua kuku',naissance:'Kuzaliwa kwa vifaranga',mortalite:'Vifo',
+                autre:'Nyingine',nature:'Asili',prix_total:'Bei ya jumla',description:'Maelezo',type_revenu:'Mapato',type_depense:'Matumizi',
+                autres:'Nyinginezo',autres_filtre:'Nyinginezo',
+                enregistrer:'Hifadhi',categorie:'Kategoria',quantite_vendue:'Idadi iliyouzwa',montant_total:'Jumla',client:'Mteja',
+                nombre_oeufs:'Idadi ya mayai',type_aliment:'Aina ya chakula',quantite_kg:'Kiasi (KG)',quantite:'Kiasi',fournisseur:'Muuzaji',
+                quantite_poussins:'Idadi ya vifaranga waliozaliwa',prix_total_estime:'Bei ya jumla iliyokadiriwa',
+                categorie_concernée:'Kategoria inayohusika',quantite_perdue:'Idadi iliyopotea',montant_imagine:'Kiasi cha makadirio kilichopotea',lot_inconnu:'Kundi lisilojulikana',
+                ajoute_le:'Imeongezwa tarehe',betes:'wanyama',back:'Rudi',tous:'Zote',ventes:'Mauzo',achats:'Ununuzi',naissances:'Kuzaliwa',mortalite_f:'Vifo',
+                rapport_mensuel:'Ripoti ya mwezi',benefice:'Faida',ventes_poules_f:'Kuuza kuku',ventes_oeufs_f:'Kuuza mayai',achat_aliment_f:'Kununua chakula',
+                investissement:'Uwekezaji',perte_oeufs_f:'Upotevu wa mayai',stock_actuel:'Hisa za sasa',total_poulets:'Jumla ya kuku',export:'Hamisha',
+                export_donnees:'Hamisha data',export_desc:'Hamisha data zako zote',prix_unitaire:'Bei ya kitengo',total:'Jumla',
+                quantite_produite:'Kiasi kilichozalishwa',quantite_perdue_oeufs:'Kiasi kilichopotea',reset:'Futa',reset_titre:'Futa data zote',
+                reset_desc:'Kitendo hiki kitafuta data zako zote.',reset_btn:'Futa',profil:'Wasifu',securite:'Usalama'
+            }
+        };
+
+        function translateText(lang) {
+            document.querySelectorAll('[data-key]').forEach(el => {
+                const key = el.getAttribute('data-key');
+                if (translations[lang] && translations[lang][key]) {
+                    if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') el.placeholder = translations[lang][key];
+                    else el.textContent = translations[lang][key];
+                }
+            });
+        }
+        function changeLanguage(lang) { currentLang = lang; translateText(lang); document.getElementById('langSelect').value = lang; localStorage.setItem('liftapp_lang', lang); }
+        function changeTheme(theme) {
+            if (theme === 'dark') { document.body.classList.add('dark'); }
+            else { document.body.classList.remove('dark'); }
+            document.getElementById('themeSelect').value = theme;
+            localStorage.setItem('liftapp_theme', theme);
+        }
+
+        // ==================== ASSISTANT IA (INTERNE) ====================
+        function closeAiFullscreen() { document.getElementById('aiFullscreenOverlay').classList.remove('show'); closeAiHistory(); }
+        function getDataContext() {
+            let totalPoulets = 0;
+            for (let cat in data.poulets) totalPoulets += (data.poulets[cat] || []).reduce((sum, item) => sum + (item.quantite || 0), 0);
+            const stockOeufs = data.oeufs.stock || 0;
+            let rev = 0, dep = 0;
+            (data.finances || []).forEach(f => { if (f.type === 'revenu') rev += f.montant || 0; if (f.type === 'depense') dep += f.montant || 0; });
+            return 'Donnees elevage : ' + totalPoulets + ' poulets, ' + stockOeufs + ' oeufs, Revenus: ' + rev + ' FBU, Depenses: ' + dep + ' FBU, Solde: ' + (rev-dep) + ' FBU';
+        }
+        function sendAiFullscreenMessage() { openAiLoading(); }
+        function addAiFullscreenMessage(text, sender) { /* redirige vers Gemini */ }
+        function showAiTyping() { /* redirige vers Gemini */ }
+        function removeAiTyping() { /* redirige vers Gemini */ }
+        function renderAiFullscreenMessages() { /* redirige vers Gemini */ }
+        function openAiHistory() { openAiLoading(); }
+        function closeAiHistory() { /* rien */ }
+        function renderAiHistoryList() { /* rien */ }
+        function loadAiConversation(index) { openAiLoading(); }
+        function deleteAiConversation(index) { openAiLoading(); }
+        function openAiFromFab() { switchTab('parametre'); setTimeout(() => openAiLoading(), 300); }
+
+        // ==================== SAUVEGARDE ====================
+        async function saveDataToCloud() {
+            if (!currentUser || !db) return;
+            try {
+                await db.collection('users').doc(currentUser.uid).set({
+                    data: JSON.parse(JSON.stringify(data)), profile: currentUserProfile,
+                    aiConversationHistory: aiConversationHistory, updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
+                showSaveIndicator(true);
+            } catch (error) { console.error('Erreur sauvegarde cloud:', error); showSaveIndicator(false); }
+        }
+        async function loadDataFromCloud(uid) {
+            if (!db) { loadLocalFallback(); return; }
+            try {
+                const doc = await db.collection('users').doc(uid).get();
+                if (doc.exists) {
+                    const docData = doc.data();
+                    if (docData.data) {
+                        data = docData.data;
+                        if (!data.poulets) data.poulets = { pondeuses: [], coqs: [], poussins: [] };
+                        if (!data.poulets.pondeuses) data.poulets.pondeuses = []; if (!data.poulets.coqs) data.poulets.coqs = []; if (!data.poulets.poussins) data.poulets.poussins = [];
+                        if (!data.oeufs) data.oeufs = { stock: 0, historique: [] }; if (!data.oeufs.historique) data.oeufs.historique = [];
+                        if (!data.mouvements) data.mouvements = []; if (!data.finances) data.finances = []; if (!data.revenus) data.revenus = 0; if (!data.depenses) data.depenses = 0;
+                    }
+                    if (docData.profile) currentUserProfile = docData.profile;
+                    if (docData.aiConversationHistory) aiConversationHistory = docData.aiConversationHistory;
+                }
+            } catch (error) { console.error('Erreur chargement cloud:', error); loadLocalFallback(); }
+        }
+        function loadLocalFallback() {
+            try { const saved = localStorage.getItem('liftapp_data'); if (saved) data = JSON.parse(saved); } catch(e) {}
+            if (!data.poulets) data.poulets = { pondeuses: [], coqs: [], poussins: [] }; if (!data.oeufs) data.oeufs = { stock: 0, historique: [] };
+            if (!data.mouvements) data.mouvements = []; if (!data.finances) data.finances = [];
+            try { const profileSaved = localStorage.getItem('liftapp_profile'); if (profileSaved) currentUserProfile = JSON.parse(profileSaved); } catch(e) {}
+            try { const aiHistSaved = localStorage.getItem('liftapp_ai_history'); if (aiHistSaved) aiConversationHistory = JSON.parse(aiHistSaved); } catch(e) {}
+        }
+        function autoSave() {
+            localStorage.setItem('liftapp_data', JSON.stringify(data));
+            localStorage.setItem('liftapp_profile', JSON.stringify(currentUserProfile));
+            localStorage.setItem('liftapp_ai_history', JSON.stringify(aiConversationHistory));
+            if (currentUser && db) saveDataToCloud();
+        }
+        function showSaveIndicator(success) {
+            const el = document.getElementById('saveIndicator');
+            if (success) { el.className = 'save-indicator saving'; setTimeout(() => { el.className = 'save-indicator'; }, 1500); }
+            else { el.className = 'save-indicator error'; setTimeout(() => { el.className = 'save-indicator'; }, 2000); }
+        }
+        function loadProfile() {
+            if (!currentUser) return;
+            document.getElementById('profileEmail').textContent = 'Email : ' + (currentUser.email || 'Non defini');
+            if (currentUserProfile.displayName) document.getElementById('profileName').value = currentUserProfile.displayName;
+            if (currentUserProfile.photoURL) document.getElementById('profilePhoto').innerHTML = '<img src="' + currentUserProfile.photoURL + '" />';
+        }
+        async function uploadPhoto(input) {
+            if (!input.files || !input.files[0] || !storage || !currentUser) return;
+            const file = input.files[0], loadingEl = document.getElementById('saveIndicator'); loadingEl.className = 'save-indicator saving';
+            try {
+                const ref = storage.ref('profile_photos/' + currentUser.uid + '/' + Date.now() + '_' + file.name);
+                const snapshot = await ref.put(file); const downloadURL = await snapshot.ref.getDownloadURL();
+                await currentUser.updateProfile({ photoURL: downloadURL }); currentUserProfile.photoURL = downloadURL;
+                document.getElementById('profilePhoto').innerHTML = '<img src="' + downloadURL + '" />';
+                if (db) await db.collection('users').doc(currentUser.uid).set({ profile: currentUserProfile, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+                localStorage.setItem('liftapp_profile', JSON.stringify(currentUserProfile)); autoSave(); showSaveIndicator(true); alert('Photo mise a jour !');
+            } catch (error) { showSaveIndicator(false); alert('Erreur upload photo.'); }
+        }
+        async function updateProfile() {
+            if (!currentUser) return; const name = document.getElementById('profileName').value.trim();
+            try {
+                if (name) { await currentUser.updateProfile({ displayName: name }); currentUserProfile.displayName = name; }
+                if (db) await db.collection('users').doc(currentUser.uid).set({ profile: currentUserProfile, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+                localStorage.setItem('liftapp_profile', JSON.stringify(currentUserProfile)); autoSave(); alert('Profil mis a jour !'); showSaveIndicator(true);
+            } catch (error) { alert('Erreur mise a jour profil.'); showSaveIndicator(false); }
+        }
+        async function changePassword() {
+            if (!auth || !currentUser) { alert('Vous devez etre connecte.'); return; }
+            const oldPassword = document.getElementById('oldPassword').value, newPassword = document.getElementById('newPassword').value, confirmPassword = document.getElementById('confirmPassword').value;
+            if (!oldPassword || !newPassword || !confirmPassword) { alert('Veuillez remplir tous les champs.'); return; }
+            if (newPassword.length < 6) { alert('Minimum 6 caracteres.'); return; }
+            if (newPassword !== confirmPassword) { alert('Les mots de passe ne correspondent pas.'); return; }
+            try {
+                const credential = firebase.auth.EmailAuthProvider.credential(currentUser.email, oldPassword);
+                await currentUser.reauthenticateWithCredential(credential); await currentUser.updatePassword(newPassword);
+                alert('Mot de passe change ! Vous allez etre deconnecte.'); setTimeout(() => logout(), 1500);
+            } catch (error) { alert(error.code === 'auth/wrong-password' ? 'Ancien mot de passe incorrect.' : error.message); }
+        }
+        function showDeleteAccountModal() { document.getElementById('deleteAccountModal').classList.add('show'); }
+        function closeDeleteAccountModal() { document.getElementById('deleteAccountModal').classList.remove('show'); }
+        function confirmDeleteAccount() { closeDeleteAccountModal(); document.getElementById('confirmDeleteAccountModal').classList.add('show'); }
+        function closeConfirmDeleteAccountModal() { document.getElementById('confirmDeleteAccountModal').classList.remove('show'); }
+        async function executeDeleteAccount() {
+            closeConfirmDeleteAccountModal();
+            if (!auth || !currentUser) { alert('Vous devez etre connecte.'); return; }
+            if (!confirm('Supprimer definitivement votre compte ?')) return;
+            try {
+                if (db) await db.collection('users').doc(currentUser.uid).delete();
+                await currentUser.delete(); ['liftapp_data','liftapp_profile','liftapp_ai_history'].forEach(k => localStorage.removeItem(k));
+                alert('Compte supprime.'); auth.signOut();
+            } catch (error) { alert(error.code === 'auth/requires-recent-login' ? 'Reconnectez-vous d\'abord.' : error.message); if (error.code === 'auth/requires-recent-login') auth.signOut(); }
+        }
+        function showResetModal() { document.getElementById('resetModal').classList.add('show'); }
+        function closeResetModal() { document.getElementById('resetModal').classList.remove('show'); }
+        function confirmReset() { closeResetModal(); document.getElementById('confirmResetModal').classList.add('show'); }
+        function closeConfirmResetModal() { document.getElementById('confirmResetModal').classList.remove('show'); }
+        async function executeReset() {
+            closeConfirmResetModal();
+            data = { poulets: { pondeuses: [], coqs: [], poussins: [] }, oeufs: { stock: 0, historique: [] }, mouvements: [], finances: [], revenus: 0, depenses: 0 };
+            aiConversationHistory = []; localStorage.setItem('liftapp_data', JSON.stringify(data)); localStorage.setItem('liftapp_ai_history', JSON.stringify(aiConversationHistory));
+            if (currentUser && db) await db.collection('users').doc(currentUser.uid).set({ data: JSON.parse(JSON.stringify(data)), aiConversationHistory: [], updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+            updateDashboard(); renderMouvements(); renderFinances(); updateReport(); alert('Donnees reinitialisees !');
+        }
+        function switchTab(page) {
+            document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+            document.getElementById('page-' + page).classList.add('active');
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.page === page));
+            const titleKey = page === 'dashboard' ? 'dashboard' : page === 'poulets' ? 'poulets_nav' : page === 'mouvements' ? 'mouvements_nav' : page === 'finance' ? 'finance_nav' : 'parametre_nav';
+            if (translations[currentLang] && translations[currentLang][titleKey]) document.getElementById('pageTitle').textContent = translations[currentLang][titleKey];
+            document.getElementById('backBtn').classList.toggle('show', page === 'poulets');
+            if (pageHistory[pageHistory.length - 1] !== page) pageHistory.push(page);
+            if (page === 'finance') updateReport();
+            const mainFab = document.getElementById('mainFab'), aiFab = document.getElementById('aiFab');
+            if (page === 'parametre') { mainFab.style.display = 'none'; aiFab.style.display = 'none'; }
+            else { mainFab.style.display = 'flex'; aiFab.style.display = 'flex'; }
+        }
+        function goBack() { if (pageHistory.length > 1) { pageHistory.pop(); switchTab(pageHistory[pageHistory.length - 1]); } }
+        function switchSettings(section) {
+            document.querySelectorAll('.settings-section').forEach(el => el.classList.remove('active'));
+            document.getElementById('section-' + section).classList.add('active');
+            document.querySelectorAll('.settings-nav button').forEach(el => el.classList.remove('active'));
+            const btn = document.getElementById('btn' + section.charAt(0).toUpperCase() + section.slice(1));
+            if (btn) btn.classList.add('active');
+        }
+        function setFilter(filter) {
+            currentFilter = filter;
+            document.querySelectorAll('.filter-nav button').forEach(el => el.classList.toggle('active', el.dataset.filter === filter));
+            renderMouvements();
+        }
+        function getFilteredMouvements() {
+            if (currentFilter === 'all') return data.mouvements || [];
+            const filters = {
+                'ventes': ['Vente poules', 'Vente oeufs'],
+                'achats': ['Achat poulets', 'Achat aliment'],
+                'naissances': ['Naissance poussins'],
+                'mortalite': ['Mortalite'],
+                'oeufs': ['Production oeufs', 'Vente oeufs', 'Perte oeufs'],
+                'autres': ['Autre']
+            };
+            return (data.mouvements || []).filter(m => filters[currentFilter] && filters[currentFilter].includes(m.action));
+        }
+        function changeMonth(delta) { currentMonth += delta; if (currentMonth < 0) { currentMonth = 11; currentYear--; } if (currentMonth > 11) { currentMonth = 0; currentYear++; } updateReport(); }
+        function updateReport() {
+            const monthNames = ['Janvier','Fevrier','Mars','Avril','Mai','Juin','Juillet','Aout','Septembre','Octobre','Novembre','Decembre'];
+            document.getElementById('monthLabel').textContent = monthNames[currentMonth] + ' ' + currentYear;
+            const mois = String(currentMonth + 1).padStart(2,'0');
+            const annee = String(currentYear);
+
+            const monthFinances = (data.finances || []).filter(f => {
+                if (!f.date) return false;
+                const parts = f.date.split('/');
+                if (parts.length !== 3) return false;
+                return parts[1] === mois && parts[2] === annee;
+            });
+
+            const monthMouvements = (data.mouvements || []).filter(m => {
+                if (!m.date) return false;
+                const parts = m.date.split('/');
+                if (parts.length !== 3) return false;
+                return parts[1] === mois && parts[2] === annee;
+            });
+
+            let rev = 0, dep = 0, ventesPoules = 0, ventesOeufs = 0, achatAliment = 0, investPoules = 0, autresRevenus = 0, autresDepenses = 0;
+
+            monthFinances.forEach(f => {
+                const montant = f.montant || 0;
+                if (f.type === 'revenu') {
+                    rev += montant;
+                    if (f.label && f.label.includes('Vente') && (f.label.includes('pondeuses') || f.label.includes('coqs') || f.label.includes('poussins'))) {
+                        ventesPoules += montant;
+                    } else if (f.label && f.label.includes('Vente') && f.label.includes('oeufs')) {
+                        ventesOeufs += montant;
+                    } else if (f.label && f.label.includes('Autre')) {
+                        autresRevenus += montant;
+                    }
+                }
+                if (f.type === 'depense') {
+                    dep += montant;
+                    if (f.label && f.label.includes('Achat') && f.label.includes('aliment')) {
+                        achatAliment += montant;
+                    } else if (f.label && f.label.includes('Achat') && f.label.includes('poulets')) {
+                        investPoules += montant;
+                    } else if (f.label && f.label.includes('Autre')) {
+                        autresDepenses += montant;
+                    }
+                }
+            });
+
+            const perteOeufsMouvements = monthMouvements.filter(m => m.action === 'Perte oeufs');
+            let perteOeufs = 0;
+            perteOeufsMouvements.forEach(m => {
+                const match = m.details ? m.details.match(/(\d+)\s*oeufs/) : null;
+                if (match) perteOeufs += parseInt(match[1]);
+            });
+
+            const netAutres = autresRevenus - autresDepenses;
+            const signeAutres = netAutres >= 0 ? '+' : '';
+
+            document.getElementById('reportRevenus').textContent = rev + ' FBU';
+            document.getElementById('reportDepenses').textContent = dep + ' FBU';
+            document.getElementById('reportBenefice').textContent = (rev - dep) + ' FBU';
+            document.getElementById('reportBenefice').className = 'value ' + ((rev - dep) >= 0 ? 'positive' : 'negative');
+            document.getElementById('rdVentesPoules').textContent = ventesPoules + ' FBU';
+            document.getElementById('rdVentesOeufs').textContent = ventesOeufs + ' FBU';
+            document.getElementById('rdAchatAliment').textContent = achatAliment + ' FBU';
+            document.getElementById('rdInvestissement').textContent = investPoules + ' FBU';
+            document.getElementById('rdPerteOeufs').textContent = perteOeufs + ' oeufs';
+            document.getElementById('rdAutres').textContent = signeAutres + netAutres + ' FBU';
+
+            let stockVal = 0;
+            (data.finances || []).forEach(f => {
+                if (f.type === 'achat_stock') stockVal += f.montant || 0;
+                if (f.type === 'perte_stock') stockVal -= f.montant || 0;
+            });
+
+            let totalPoulets = 0;
+            for (let cat in data.poulets) totalPoulets += (data.poulets[cat] || []).reduce((s, i) => s + (i.quantite || 0), 0);
+
+            document.getElementById('reportStock').textContent = Math.max(0, Math.round(stockVal)) + ' FBU';
+            document.getElementById('reportTotalPoulets').textContent = totalPoulets;
+            document.getElementById('reportOeufs').textContent = data.oeufs.stock || 0;
+
+            updateChart(monthFinances);
+        }
+        function updateChart(monthFinances) {
+            const revenues=(monthFinances||[]).filter(f=>f.type==='revenu').reduce((s,f)=>s+(f.montant||0),0);
+            const depenses=(monthFinances||[]).filter(f=>f.type==='depense').reduce((s,f)=>s+(f.montant||0),0);
+            const max=Math.max(revenues,depenses,1);
+            document.querySelectorAll('.report-chart .bar').forEach((bar,i)=>{bar.style.height=Math.max(4,((i%2===0?revenues:depenses)/max)*50)+'px';});
+        }
+        function exportCSV() {
+            try {
+                let csv='Date;Type;Categorie;Quantite;Montant;Details\n';
+                (data.mouvements||[]).forEach(m=>{let q='-';if(m.details){let match=m.details.match(/\((\d+)/);if(match)q=match[1];}csv+=(m.date||'')+';'+(m.action||'')+';'+(m.details||'-')+';'+q+';'+(m.montant||0)+';'+(m.details||'')+'\n';});
+                csv+='\nOEUFS\nStock;'+(data.oeufs.stock||0)+'\n\nHistorique\nDate;Action;Quantite;Montant;Client\n';
+                (data.oeufs.historique||[]).forEach(h=>csv+=(h.date||'')+';'+(h.action||'')+';'+(h.quantite||0)+';'+(h.montant||0)+';'+(h.client||'')+'\n');
+                const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'}),link=document.createElement('a');
+                link.href=URL.createObjectURL(blob);link.download='LiftApp_export_'+new Date().toISOString().split('T')[0]+'.csv';
+                document.body.appendChild(link);link.click();document.body.removeChild(link);URL.revokeObjectURL(link.href);showSaveIndicator(true);
+            }catch(e){showSaveIndicator(false);alert('Erreur export: '+e.message);}
+        }
+        function exportPDF() {
+            try {
+                let html='<html><head><meta charset="UTF-8"><title>LiftApp</title><style>body{font-family:Arial;padding:20px}h1{color:#0f3b2a}table{width:100%;border-collapse:collapse}th{background:#0f3b2a;color:#fff;padding:8px}td{padding:6px;border-bottom:1px solid #ddd}</style></head><body><h1>LiftApp - Rapport</h1><p>'+new Date().toLocaleDateString('fr-FR')+'</p>';
+                html+='<p>Total poulets: '+document.getElementById('totalPoulets').textContent+'</p><p>Oeufs: '+(data.oeufs.stock||0)+'</p>';
+                html+='<p>Revenus: '+document.getElementById('totalRevenus').textContent+' | Depenses: '+document.getElementById('totalDepenses').textContent+' | Solde: '+document.getElementById('soldeNet').textContent+'</p>';
+                html+='<h2>Mouvements</h2><table><tr><th>Date</th><th>Type</th><th>Details</th><th>Montant</th></tr>';
+                (data.mouvements||[]).slice().reverse().forEach(m=>html+='<tr><td>'+(m.date||'')+'</td><td>'+(m.action||'')+'</td><td>'+(m.details||'-')+'</td><td>'+(m.montant||0)+' FBU</td></tr>');
+                html+='</table></body></html>';
+                const blob=new Blob([html],{type:'text/html;charset=utf-8;'}),link=document.createElement('a');
+                link.href=URL.createObjectURL(blob);link.download='LiftApp_rapport_'+new Date().toISOString().split('T')[0]+'.html';
+                document.body.appendChild(link);link.click();document.body.removeChild(link);URL.revokeObjectURL(link.href);showSaveIndicator(true);
+            }catch(e){showSaveIndicator(false);alert('Erreur export: '+e.message);}
+        }
+        function viewCategory(type) {
+            const titles={pondeuses:'Pondeuses',coqs:'Coqs',poussins:'Poussins'};
+            document.getElementById('pouletCategoryTitle').innerText=titles[type]||type;
+            renderPouletList(type);switchTab('poulets');
+        }
+        function renderPouletList(type) {
+            const container=document.getElementById('pouletListContainer'),list=data.poulets[type]||[];
+            if(list.length===0){container.innerHTML='<div style="text-align:center;padding:20px;color:#8a9a8a;">Aucun enregistrement.</div>';return;}
+            let html='';list.forEach(item=>{const df=item.date;html+='<div class="table-row"><div class="info"><div class="title">'+(item.nom||'Lot inconnu')+'</div><div class="sub">Ajoute le '+df+'</div></div><div class="amount">'+item.quantite+' betes</div></div>';});
+            container.innerHTML=html;
+        }
+        function renderMouvements() {
+            const container=document.getElementById('mouvementListContainer'),filtered=getFilteredMouvements();
+            if(filtered.length===0){container.innerHTML='<div style="text-align:center;padding:20px;color:#8a9a8a;">Aucun mouvement.</div>';return;}
+            let html='';filtered.slice().reverse().forEach(m=>{
+                let signe='',colorClass='neutral',montantDisplay=m.montant||0;
+                if(m.action==='Vente poules'||m.action==='Vente oeufs'){signe='+';colorClass='positive';}
+                else if(m.action==='Achat poulets'||m.action==='Achat aliment'){signe='-';colorClass='negative';}
+                else if(m.action==='Autre'){
+                    const isRevenu = m.details && m.details.includes('(Revenu)');
+                    signe = isRevenu ? '+' : '-';
+                    colorClass = isRevenu ? 'positive' : 'negative';
+                }
+                else{montantDisplay=0;}
+                const df=m.date||'';html+='<div class="table-row"><div class="info"><div class="title">'+m.action+'</div><div class="sub">'+df+' - '+(m.details||'')+'</div></div><div class="amount '+colorClass+'">'+signe+' '+montantDisplay+' FBU</div></div>';
+            });
+            container.innerHTML=html;
+        }
+        function renderFinances() {
+            const container=document.getElementById('financeListContainer');
+            if((data.finances||[]).length===0){container.innerHTML='<div style="text-align:center;padding:20px;color:#8a9a8a;">Aucune transaction.</div>';return;}
+            let html='';(data.finances||[]).slice().reverse().forEach(f=>{
+                let signe=(f.type==='depense'||f.type==='perte_stock'||f.type==='perte_oeufs')?'-':'+';
+                let colorClass=(f.type==='depense'||f.type==='perte_stock'||f.type==='perte_oeufs')?'negative':'positive';
+                const df=f.date||'';html+='<div class="table-row"><div class="info"><div class="title">'+f.label+'</div><div class="sub">'+df+'</div></div><div class="amount '+colorClass+'">'+signe+' '+f.montant+' FBU</div></div>';
+            });
+            container.innerHTML=html;
+        }
+        function updateDashboard() {
+            let total = 0;
+            for (let cat in data.poulets) {
+                let count = (data.poulets[cat] || []).reduce((s, i) => s + (i.quantite || 0), 0);
+                document.getElementById('count' + cat.charAt(0).toUpperCase() + cat.slice(1)).innerText = count;
+                total += count;
+            }
+            document.getElementById('totalPoulets').innerText = total;
+
+            let stockVal = 0;
+            (data.finances || []).forEach(f => {
+                if (f.type === 'achat_stock') stockVal += f.montant || 0;
+                if (f.type === 'perte_stock') stockVal -= f.montant || 0;
+            });
+            document.getElementById('valeurStock').innerHTML = Math.max(0, Math.round(stockVal)) + ' FBU';
+
+            let rev = 0;
+            (data.finances || []).forEach(f => {
+                if (f.type === 'revenu') {
+                    if (f.label && (f.label.includes('Investissement') || f.label.includes('Naissance'))) {
+                        // ne pas compter
+                    } else {
+                        rev += f.montant || 0;
+                    }
+                }
+            });
+
+            let dep = 0;
+            (data.finances || []).forEach(f => {
+                if (f.type === 'depense') {
+                    dep += f.montant || 0;
+                }
+            });
+
+            document.getElementById('totalRevenus').innerHTML = rev + ' FBU';
+            document.getElementById('totalDepenses').innerHTML = dep + ' FBU';
+            document.getElementById('soldeNet').innerHTML = (rev - dep) + ' FBU';
+
+            document.getElementById('stockOeufs').innerText = data.oeufs.stock || 0;
+            document.getElementById('countOeufs').innerText = data.oeufs.stock || 0;
+        }
+        function openModal(){document.getElementById('actionModal').classList.add('show');}
+        function closeModal(){document.getElementById('actionModal').classList.remove('show');document.getElementById('formFields').innerHTML='';document.getElementById('submitBtn').classList.remove('show');}
+        function calculateTotal(){
+            const qte=parseInt(document.getElementById('f_qte')?.value)||0,prix=parseInt(document.getElementById('f_prix_unitaire')?.value)||0;
+            const total=qte*prix;document.getElementById('totalDisplay').textContent=total+' FBU';
+            const montantInput=document.getElementById('f_montant');if(montantInput)montantInput.value=total;
+        }
+        function selectAction(action){
+            currentAction=action;const t=translations[currentLang]||translations.fr;let html='';
+            if(action==='vente_poules')html='<div class="form-group show"><label>'+t.categorie+'</label><select id="f_cat" required><option value="pondeuses">'+t.pondeuses+'</option><option value="coqs">'+t.coqs+'</option><option value="poussins">'+t.poussins+'</option></select></div><div class="form-group show"><label>'+t.quantite_vendue+'</label><input type="number" id="f_qte" min="1" required /></div><div class="form-group show"><label>'+t.montant_total+' (FBU)</label><input type="number" id="f_montant" min="0" required /></div><div class="form-group show"><label>'+t.client+'</label><input type="text" id="f_client" placeholder="'+t.client+'" required /></div>';
+            else if(action==='vente_oeufs')html='<div class="form-group show"><label>'+t.nombre_oeufs+'</label><input type="number" id="f_qte" min="1" required oninput="calculateTotal()" /></div><div class="form-group show"><label>'+t.prix_unitaire+' (FBU)</label><input type="number" id="f_prix_unitaire" min="0" required oninput="calculateTotal()" /></div><div class="form-group show"><label>'+t.montant_total+' (FBU)</label><div class="total-auto" id="totalDisplay">0 FBU</div><input type="hidden" id="f_montant" value="0" /></div><div class="form-group show"><label>'+t.client+'</label><input type="text" id="f_client" placeholder="'+t.client+'" required /></div>';
+            else if(action==='production_oeufs')html='<div class="form-group show"><label>'+t.quantite_produite+'</label><input type="number" id="f_qte" min="1" required /></div>';
+            else if(action==='perte_oeufs')html='<div class="form-group show"><label>'+t.quantite_perdue_oeufs+'</label><input type="number" id="f_qte" min="1" required /></div>';
+            else if(action==='achat_aliment')html='<div class="form-group show"><label>'+t.type_aliment+'</label><input type="text" id="f_type" placeholder="'+t.type_aliment+'" required /></div><div class="form-group show"><label>'+t.quantite_kg+'</label><input type="number" id="f_qte" min="1" required /></div><div class="form-group show"><label>'+t.montant_total+' (FBU)</label><input type="number" id="f_montant" min="0" required /></div>';
+            else if(action==='achat_poules')html='<div class="form-group show"><label>'+t.categorie+'</label><select id="f_cat" required><option value="pondeuses">'+t.pondeuses+'</option><option value="coqs">'+t.coqs+'</option><option value="poussins">'+t.poussins+'</option></select></div><div class="form-group show"><label>'+t.quantite+'</label><input type="number" id="f_qte" min="1" required /></div><div class="form-group show"><label>'+t.montant_total+' (FBU)</label><input type="number" id="f_montant" min="0" required /></div><div class="form-group show"><label>'+t.fournisseur+'</label><input type="text" id="f_fournisseur" placeholder="'+t.fournisseur+'" required /></div>';
+            else if(action==='naissance')html='<div class="form-group show"><label>'+t.quantite_poussins+'</label><input type="number" id="f_qte" min="1" required /></div><div class="form-group show"><label>'+t.prix_total_estime+' (FBU)</label><input type="number" id="f_montant" min="0" required /></div>';
+            else if(action==='mortalite')html='<div class="form-group show"><label>'+t.categorie_concernée+'</label><select id="f_cat" required><option value="pondeuses">'+t.pondeuses+'</option><option value="coqs">'+t.coqs+'</option><option value="poussins">'+t.poussins+'</option></select></div><div class="form-group show"><label>'+t.quantite_perdue+'</label><input type="number" id="f_qte" min="1" required /></div><div class="form-group show"><label>'+t.montant_imagine+' (FBU)</label><input type="number" id="f_montant" min="0" required /></div>';
+            else if(action==='autre')html='<div class="form-group show"><label>'+t.nature+'</label><input type="text" id="f_nature" placeholder="'+t.nature+'" required /></div><div class="form-group show"><label>'+t.type_revenu+' / '+t.type_depense+'</label><select id="f_type_autre" required><option value="revenu">'+t.type_revenu+'</option><option value="depense">'+t.type_depense+'</option></select></div><div class="form-group show"><label>'+t.prix_total+' (FBU)</label><input type="number" id="f_montant" min="0" required /></div><div class="form-group show"><label>'+t.description+'</label><input type="text" id="f_desc" placeholder="'+t.description+'" /></div>';
+            document.getElementById('formFields').innerHTML=html;document.getElementById('submitBtn').classList.add('show');
+            if(currentAction==='vente_oeufs'){document.getElementById('f_qte').addEventListener('input',calculateTotal);document.getElementById('f_prix_unitaire').addEventListener('input',calculateTotal);setTimeout(calculateTotal,100);}
+        }
+        function submitAction(e){
+            e.preventDefault();const qteInput=document.getElementById('f_qte');if(!qteInput&&currentAction!=='autre'){alert('Erreur: Champs manquants');return;}
+            const today=new Date().toLocaleDateString('fr-FR');let qte=parseInt(qteInput?.value)||0,montant=0;
+            if(currentAction==='vente_oeufs'){const prix=parseInt(document.getElementById('f_prix_unitaire')?.value)||0;montant=qte*prix;}
+            else if(currentAction==='autre'){montant=parseInt(document.getElementById('f_montant')?.value)||0;}
+            else{montant=parseInt(document.getElementById('f_montant')?.value)||0;}
+            let cat=document.getElementById('f_cat')?.value||null;
+            if(currentAction==='vente_poules'&&cat){
+                let stockList=data.poulets[cat]||[];if(stockList.length>0){let tr=qte;for(let i=0;i<stockList.length&&tr>0;i++){let rf=Math.min(tr,stockList[i].quantite||0);stockList[i].quantite-=rf;tr-=rf;}data.poulets[cat]=stockList.filter(item=>(item.quantite||0)>0);}
+                let client=document.getElementById('f_client')?.value||'';data.mouvements.push({action:'Vente poules',date:today,type:'sortie',montant:montant,details:cat+' ('+qte+' betes) - '+client});
+                data.finances.push({label:'Vente '+cat,date:today,type:'revenu',montant:montant});data.finances.push({label:'Sortie stock '+cat,date:today,type:'perte_stock',montant:montant});
+            }else if(currentAction==='vente_oeufs'){
+                if(qte>(data.oeufs.stock||0)){alert('Stock insuffisant ! Stock : '+data.oeufs.stock+' oeufs');return;}
+                let client=document.getElementById('f_client')?.value||'';data.oeufs.stock-=qte;data.oeufs.historique.push({action:'Vente',date:today,quantite:qte,montant:montant,client:client});
+                data.mouvements.push({action:'Vente oeufs',date:today,type:'sortie',montant:montant,details:qte+' oeufs - '+client});data.finances.push({label:'Vente oeufs',date:today,type:'revenu',montant:montant});
+            }else if(currentAction==='production_oeufs'){
+                data.oeufs.stock+=qte;data.oeufs.historique.push({action:'Production',date:today,quantite:qte});data.mouvements.push({action:'Production oeufs',date:today,type:'neutre',montant:0,details:qte+' oeufs produits'});
+            }else if(currentAction==='perte_oeufs'){
+                if(qte>(data.oeufs.stock||0)){alert('Stock insuffisant ! Stock : '+data.oeufs.stock+' oeufs');return;}
+                data.oeufs.stock-=qte;data.oeufs.historique.push({action:'Perte',date:today,quantite:qte});data.mouvements.push({action:'Perte oeufs',date:today,type:'neutre',montant:0,details:qte+' oeufs perdus'});
+                data.finances.push({label:'Perte oeufs',date:today,type:'perte_oeufs',montant:0});
+            }else if(currentAction==='achat_aliment'){
+                let type=document.getElementById('f_type')?.value||'';data.mouvements.push({action:'Achat aliment',date:today,type:'entree',montant:montant,details:type+' ('+qte+' KG)'});
+                data.finances.push({label:'Achat '+type,date:today,type:'depense',montant:montant});
+            }else if(currentAction==='achat_poules'&&cat){
+                if(!data.poulets[cat])data.poulets[cat]=[];data.poulets[cat].push({nom:'Lot '+today,quantite:qte,date:today});
+                let fournisseur=document.getElementById('f_fournisseur')?.value||'';data.mouvements.push({action:'Achat poulets',date:today,type:'entree',montant:montant,details:cat+' ('+qte+' betes) - '+fournisseur});
+                data.finances.push({label:'Achat poulets '+cat,date:today,type:'depense',montant:montant});data.finances.push({label:'Valeur Stock '+cat,date:today,type:'achat_stock',montant:montant});
+            }else if(currentAction==='naissance'){
+                if(!data.poulets['poussins'])data.poulets['poussins']=[];data.poulets['poussins'].push({nom:'Naissance '+today,quantite:qte,date:today});
+                data.mouvements.push({action:'Naissance poussins',date:today,type:'neutre',montant:montant,details:qte+' poussins'});
+                data.finances.push({label:'Investissement naissance',date:today,type:'revenu',montant:montant});data.finances.push({label:'Naissance poussins',date:today,type:'achat_stock',montant:montant});
+            }else if(currentAction==='mortalite'&&cat){
+                let stockList=data.poulets[cat]||[];if(stockList.length>0){let tr=qte;for(let i=0;i<stockList.length&&tr>0;i++){let rf=Math.min(tr,stockList[i].quantite||0);stockList[i].quantite-=rf;tr-=rf;}data.poulets[cat]=stockList.filter(item=>(item.quantite||0)>0);}
+                data.mouvements.push({action:'Mortalite',date:today,type:'sortie',montant:0,details:cat+' ('+qte+' betes)'});data.finances.push({label:'Perte '+cat,date:today,type:'perte_stock',montant:montant});
+            }else if(currentAction==='autre'){
+                const nature=document.getElementById('f_nature')?.value||'Autre';
+                const typeAutre=document.getElementById('f_type_autre')?.value||'revenu';
+                const desc=document.getElementById('f_desc')?.value||'';
+                const label='Autre: '+nature+(desc?' - '+desc:'');
+                const details=nature+' ('+(typeAutre==='revenu'?'Revenu':'Depense')+')'+(desc?' - '+desc:'');
+                data.mouvements.push({action:'Autre',date:today,type:typeAutre==='revenu'?'revenu':'depense',montant:montant,details:details});
+                data.finances.push({label:label,date:today,type:typeAutre==='revenu'?'revenu':'depense',montant:montant});
+            }
+            autoSave();updateDashboard();renderMouvements();renderFinances();if(document.getElementById('page-finance').classList.contains('active'))updateReport();
+            closeModal();switchTab('dashboard');
+        }
+
+        // ==================== INIT ====================
+        const savedLang = localStorage.getItem('liftapp_lang') || 'fr';
+        const savedTheme = localStorage.getItem('liftapp_theme') || 'light';
+        changeLanguage(savedLang);
+        if (savedTheme === 'dark') { document.body.classList.add('dark'); }
+        document.getElementById('langSelect').value = savedLang;
+        document.getElementById('themeSelect').value = savedTheme;
+
+        if (auth) {
+            auth.onAuthStateChanged(async (user) => {
+                if (user) {
+                    currentUser = user; isLoggedIn = true; document.getElementById('authOverlay').classList.add('hidden');
+                    await loadDataFromCloud(user.uid); loadProfile();
+                    updateDashboard(); renderMouvements(); renderFinances(); updateReport();
+                } else {
+                    currentUser = null; isLoggedIn = false; currentUserProfile = { displayName: '', photoURL: '', email: '' };
+                    document.getElementById('authOverlay').classList.remove('hidden'); showLogin();
+                    data = { poulets: { pondeuses: [], coqs: [], poussins: [] }, oeufs: { stock: 0, historique: [] }, mouvements: [], finances: [], revenus: 0, depenses: 0 };
+                    aiConversationHistory = []; updateDashboard(); renderMouvements(); renderFinances(); updateReport();
+                }
+            });
+        } else {
+            loadLocalFallback(); updateDashboard(); renderMouvements(); renderFinances(); updateReport();
+            document.getElementById('authOverlay').classList.add('hidden');
+        }
+
+        console.log('LiftApp - Assistant IA avec bouton retour vers LiftApp');
+        console.log('Version 2.0 - A propos mis a jour');
+    </script>
+</body>
+</html>
